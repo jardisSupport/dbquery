@@ -14,6 +14,14 @@ use PHPUnit\Framework\TestCase;
  *
  * Tests: EXISTS, NOT EXISTS, andExists, orExists, andNotExists, orNotExists
  */
+/*
+ * SQL-Pins am 2026-08-10 an das Auto-Quoting einfacher Identifier angepasst:
+ * WHERE/AND/OR-, HAVING-, ORDER-BY-, GROUP-BY-Felder und die SELECT-Feldliste
+ * quoten `ident` bzw. `alias.ident` jetzt dialektgerecht (MySQL/SQLite: Backtick,
+ * PostgreSQL: Double-Quote). Ausdruecke, '*', bereits Gequotetes und
+ * Expression::raw() bleiben byte-identisch roh. Alle Aenderungen in dieser
+ * Datei sind reine Quote-Zeichen-Diffs in erwarteten SQL-Strings.
+ */
 class DbQuerySqliteExistsTest extends TestCase
 {
     public function testExistsSimple(): void
@@ -30,7 +38,7 @@ class DbQuerySqliteExistsTest extends TestCase
             ->exists($subquery)
             ->sql('sqlite', false);
 
-        $expected = "SELECT * FROM `users` WHERE EXISTS (SELECT 1 FROM `posts` `p` WHERE p.user_id = users.id)";
+        $expected = "SELECT * FROM `users` WHERE EXISTS (SELECT 1 FROM `posts` `p` WHERE `p`.`user_id` = users.id)";
 
         $this->assertEquals($expected, $sql);
     }
@@ -49,7 +57,7 @@ class DbQuerySqliteExistsTest extends TestCase
             ->notExists($subquery)
             ->sql('sqlite', false);
 
-        $expected = "SELECT * FROM `users` WHERE NOT EXISTS (SELECT 1 FROM `posts` `p` WHERE p.user_id = users.id)";
+        $expected = "SELECT * FROM `users` WHERE NOT EXISTS (SELECT 1 FROM `posts` `p` WHERE `p`.`user_id` = users.id)";
 
         $this->assertEquals($expected, $sql);
     }
@@ -70,7 +78,7 @@ class DbQuerySqliteExistsTest extends TestCase
             ->sql('sqlite', false);
 
         $expected = "SELECT * FROM `users` `u` "
-            . "WHERE u.active = 1 AND EXISTS (SELECT 1 FROM `orders` `o` WHERE o.user_id = u.id)";
+            . "WHERE `u`.`active` = 1 AND EXISTS (SELECT 1 FROM `orders` `o` WHERE `o`.`user_id` = u.id)";
 
         $this->assertEquals($expected, $sql);
     }
@@ -91,7 +99,7 @@ class DbQuerySqliteExistsTest extends TestCase
             ->sql('sqlite', false);
 
         $expected = "SELECT * FROM `users` `u` "
-            . "WHERE u.status = 'active' AND NOT EXISTS (SELECT 1 FROM `bans` `b` WHERE b.user_id = u.id)";
+            . "WHERE `u`.`status` = 'active' AND NOT EXISTS (SELECT 1 FROM `bans` `b` WHERE `b`.`user_id` = u.id)";
 
         $this->assertEquals($expected, $sql);
     }
@@ -118,9 +126,9 @@ class DbQuerySqliteExistsTest extends TestCase
             ->sql('sqlite', false);
 
         $expected = "SELECT * FROM `users` `u` "
-            . "WHERE u.active = 1 "
-            . "AND EXISTS (SELECT 1 FROM `posts` `p` WHERE p.user_id = u.id) "
-            . "AND EXISTS (SELECT 1 FROM `comments` `c` WHERE c.user_id = u.id)";
+            . "WHERE `u`.`active` = 1 "
+            . "AND EXISTS (SELECT 1 FROM `posts` `p` WHERE `p`.`user_id` = u.id) "
+            . "AND EXISTS (SELECT 1 FROM `comments` `c` WHERE `c`.`user_id` = u.id)";
 
         $this->assertEquals($expected, $sql);
     }
@@ -146,8 +154,8 @@ class DbQuerySqliteExistsTest extends TestCase
             ->sql('sqlite', false);
 
         $expected = "SELECT * FROM `users` `u` "
-            . "WHERE EXISTS (SELECT 1 FROM `posts` `p` WHERE p.user_id = u.id) "
-            . "OR EXISTS (SELECT 1 FROM `drafts` `d` WHERE d.user_id = u.id)";
+            . "WHERE EXISTS (SELECT 1 FROM `posts` `p` WHERE `p`.`user_id` = u.id) "
+            . "OR EXISTS (SELECT 1 FROM `drafts` `d` WHERE `d`.`user_id` = u.id)";
 
         $this->assertEquals($expected, $sql);
     }
@@ -174,9 +182,9 @@ class DbQuerySqliteExistsTest extends TestCase
             ->sql('sqlite', false);
 
         $expected = "SELECT * FROM `users` `u` "
-            . "WHERE u.active = 1 "
-            . "AND NOT EXISTS (SELECT 1 FROM `bans` `b` WHERE b.user_id = u.id) "
-            . "AND NOT EXISTS (SELECT 1 FROM `suspensions` `s` WHERE s.user_id = u.id)";
+            . "WHERE `u`.`active` = 1 "
+            . "AND NOT EXISTS (SELECT 1 FROM `bans` `b` WHERE `b`.`user_id` = u.id) "
+            . "AND NOT EXISTS (SELECT 1 FROM `suspensions` `s` WHERE `s`.`user_id` = u.id)";
 
         $this->assertEquals($expected, $sql);
     }
@@ -202,8 +210,8 @@ class DbQuerySqliteExistsTest extends TestCase
             ->sql('sqlite', false);
 
         $expected = "SELECT * FROM `users` `u` "
-            . "WHERE NOT EXISTS (SELECT 1 FROM `posts` `p` WHERE p.user_id = u.id) "
-            . "OR NOT EXISTS (SELECT 1 FROM `comments` `c` WHERE c.user_id = u.id)";
+            . "WHERE NOT EXISTS (SELECT 1 FROM `posts` `p` WHERE `p`.`user_id` = u.id) "
+            . "OR NOT EXISTS (SELECT 1 FROM `comments` `c` WHERE `c`.`user_id` = u.id)";
 
         $this->assertEquals($expected, $sql);
     }
@@ -262,8 +270,8 @@ class DbQuerySqliteExistsTest extends TestCase
             ->sql('sqlite', false);
 
         $expected = "SELECT * FROM `users` `u` "
-            . "WHERE u.active = 1 "
-            . "AND EXISTS (SELECT 1 FROM `orders` `o` WHERE o.user_id = u.id AND o.status = 'completed' AND o.total > 100)";
+            . "WHERE `u`.`active` = 1 "
+            . "AND EXISTS (SELECT 1 FROM `orders` `o` WHERE `o`.`user_id` = u.id AND `o`.`status` = 'completed' AND `o`.`total` > 100)";
 
         $this->assertEquals($expected, $sql);
     }
@@ -284,7 +292,7 @@ class DbQuerySqliteExistsTest extends TestCase
             ->sql('sqlite', false);
 
         $expected = "SELECT * FROM `users` `u` "
-            . "WHERE NOT EXISTS (SELECT 1 FROM `posts` `p` INNER JOIN `spam_reports` `sr` ON p.id = sr.post_id WHERE p.user_id = u.id)";
+            . "WHERE NOT EXISTS (SELECT 1 FROM `posts` `p` INNER JOIN `spam_reports` `sr` ON p.id = sr.post_id WHERE `p`.`user_id` = u.id)";
 
         $this->assertEquals($expected, $sql);
     }

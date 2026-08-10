@@ -14,6 +14,14 @@ use PHPUnit\Framework\TestCase;
  *
  * Tests: Window functions (ROW_NUMBER, RANK, SUM, etc.), Named windows, PARTITION BY, ORDER BY, Frames, GROUPS
  */
+/*
+ * SQL-Pins am 2026-08-10 an das Auto-Quoting einfacher Identifier angepasst:
+ * WHERE/AND/OR-, HAVING-, ORDER-BY-, GROUP-BY-Felder und die SELECT-Feldliste
+ * quoten `ident` bzw. `alias.ident` jetzt dialektgerecht (MySQL/SQLite: Backtick,
+ * PostgreSQL: Double-Quote). Ausdruecke, '*', bereits Gequotetes und
+ * Expression::raw() bleiben byte-identisch roh. Alle Aenderungen in dieser
+ * Datei sind reine Quote-Zeichen-Diffs in erwarteten SQL-Strings.
+ */
 class DbQueryPostgresWindowTest extends TestCase
 {
     public function testSelectWindowWithRowNumber(): void
@@ -29,7 +37,7 @@ class DbQueryPostgresWindowTest extends TestCase
         $this->assertInstanceOf(DbQuery::class, $result);
 
         $sql = $query->sql('postgres', false);
-        $expected = 'SELECT id, name, salary, ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) AS "row_num" FROM "employees"';
+        $expected = 'SELECT "id", "name", "salary", ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) AS "row_num" FROM "employees"';
         $this->assertEquals($expected, $sql);
     }
 
@@ -43,7 +51,7 @@ class DbQueryPostgresWindowTest extends TestCase
             ->from('players')
             ->sql('postgres', false);
 
-        $expected = 'SELECT id, score, RANK() OVER (ORDER BY score DESC) AS "rank" FROM "players"';
+        $expected = 'SELECT "id", "score", RANK() OVER (ORDER BY score DESC) AS "rank" FROM "players"';
         $this->assertEquals($expected, $sql);
     }
 
@@ -57,7 +65,7 @@ class DbQueryPostgresWindowTest extends TestCase
             ->from('transactions')
             ->sql('postgres', false);
 
-        $expected = 'SELECT date, amount, SUM(amount) OVER (ORDER BY date ASC) AS "running_total" FROM "transactions"';
+        $expected = 'SELECT "date", "amount", SUM(amount) OVER (ORDER BY date ASC) AS "running_total" FROM "transactions"';
         $this->assertEquals($expected, $sql);
     }
 
@@ -71,7 +79,7 @@ class DbQueryPostgresWindowTest extends TestCase
             ->from('stock_prices')
             ->sql('postgres', false);
 
-        $expected = 'SELECT date, price, LEAD(price, 1) OVER (ORDER BY date ASC) AS "next_price" FROM "stock_prices"';
+        $expected = 'SELECT "date", "price", LEAD(price, 1) OVER (ORDER BY date ASC) AS "next_price" FROM "stock_prices"';
         $this->assertEquals($expected, $sql);
     }
 
@@ -86,7 +94,7 @@ class DbQueryPostgresWindowTest extends TestCase
             ->from('employees')
             ->sql('postgres', false);
 
-        $expected = 'SELECT id, name, ROW_NUMBER() OVER (PARTITION BY department, location ORDER BY hire_date ASC) AS "row_num" FROM "employees"';
+        $expected = 'SELECT "id", "name", ROW_NUMBER() OVER (PARTITION BY department, location ORDER BY hire_date ASC) AS "row_num" FROM "employees"';
         $this->assertEquals($expected, $sql);
     }
 
@@ -101,7 +109,7 @@ class DbQueryPostgresWindowTest extends TestCase
             ->from('sales')
             ->sql('postgres', false);
 
-        $expected = 'SELECT date, amount, AVG(amount) OVER (ORDER BY date ASC ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS "moving_avg" FROM "sales"';
+        $expected = 'SELECT "date", "amount", AVG(amount) OVER (ORDER BY date ASC ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS "moving_avg" FROM "sales"';
         $this->assertEquals($expected, $sql);
     }
 
@@ -116,7 +124,7 @@ class DbQueryPostgresWindowTest extends TestCase
             ->from('data')
             ->sql('postgres', false);
 
-        $expected = 'SELECT id, value, SUM(value) OVER (ORDER BY id ASC GROUPS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS "total" FROM "data"';
+        $expected = 'SELECT "id", "value", SUM(value) OVER (ORDER BY id ASC GROUPS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS "total" FROM "data"';
         $this->assertEquals($expected, $sql);
     }
 
@@ -135,7 +143,7 @@ class DbQueryPostgresWindowTest extends TestCase
             ->from('employees')
             ->sql('postgres', false);
 
-        $expected = 'SELECT id, name, salary, ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) AS "row_num", DENSE_RANK() OVER (PARTITION BY department ORDER BY salary DESC) AS "dense_rank" FROM "employees"';
+        $expected = 'SELECT "id", "name", "salary", ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) AS "row_num", DENSE_RANK() OVER (PARTITION BY department ORDER BY salary DESC) AS "dense_rank" FROM "employees"';
         $this->assertEquals($expected, $sql);
     }
 
@@ -155,7 +163,7 @@ class DbQueryPostgresWindowTest extends TestCase
             ->from('employees')
             ->sql('postgres', false);
 
-        $expected = 'SELECT id, name, salary, ROW_NUMBER() OVER dept_window AS "row_num", RANK() OVER dept_window AS "rank" FROM "employees" WINDOW dept_window AS (PARTITION BY department ORDER BY salary DESC)';
+        $expected = 'SELECT "id", "name", "salary", ROW_NUMBER() OVER dept_window AS "row_num", RANK() OVER dept_window AS "rank" FROM "employees" WINDOW dept_window AS (PARTITION BY department ORDER BY salary DESC)';
         $this->assertEquals($expected, $sql);
     }
 
@@ -171,7 +179,7 @@ class DbQueryPostgresWindowTest extends TestCase
             ->from('metrics')
             ->sql('postgres', false);
 
-        $expected = 'SELECT timestamp, value, SUM(value) OVER time_window AS "running_total", FIRST_VALUE(value) OVER time_window AS "first_value" FROM "metrics" WINDOW time_window AS (ORDER BY timestamp ASC)';
+        $expected = 'SELECT "timestamp", "value", SUM(value) OVER time_window AS "running_total", FIRST_VALUE(value) OVER time_window AS "first_value" FROM "metrics" WINDOW time_window AS (ORDER BY timestamp ASC)';
         $this->assertEquals($expected, $sql);
     }
 
@@ -192,7 +200,7 @@ class DbQueryPostgresWindowTest extends TestCase
             ->from('employees')
             ->sql('postgres', false);
 
-        $expected = 'SELECT id, name, ROW_NUMBER() OVER by_dept AS "dept_seniority", RANK() OVER by_team AS "team_rank" FROM "employees" WINDOW by_dept AS (PARTITION BY department ORDER BY hire_date ASC), by_team AS (PARTITION BY team ORDER BY performance DESC)';
+        $expected = 'SELECT "id", "name", ROW_NUMBER() OVER by_dept AS "dept_seniority", RANK() OVER by_team AS "team_rank" FROM "employees" WINDOW by_dept AS (PARTITION BY department ORDER BY hire_date ASC), by_team AS (PARTITION BY team ORDER BY performance DESC)';
         $this->assertEquals($expected, $sql);
     }
 
@@ -216,7 +224,7 @@ class DbQueryPostgresWindowTest extends TestCase
             ->where('active')->equals(true)
             ->sql('postgres', false);
 
-        $expected = 'SELECT id, name, salary, ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) AS "row_num" FROM "employees" WHERE active = TRUE';
+        $expected = 'SELECT "id", "name", "salary", ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) AS "row_num" FROM "employees" WHERE "active" = TRUE';
         $this->assertEquals($expected, $sql);
     }
 
@@ -232,7 +240,7 @@ class DbQueryPostgresWindowTest extends TestCase
             ->having('COUNT(*)')->greater(5)
             ->sql('postgres', false);
 
-        $expected = 'SELECT department, COUNT(*) as emp_count, RANK() OVER (ORDER BY COUNT(*) DESC) AS "dept_rank" FROM "employees" GROUP BY department HAVING COUNT(*) > 5';
+        $expected = 'SELECT "department", COUNT(*) as "emp_count", RANK() OVER (ORDER BY COUNT(*) DESC) AS "dept_rank" FROM "employees" GROUP BY "department" HAVING COUNT(*) > 5';
         $this->assertEquals($expected, $sql);
     }
 
@@ -249,7 +257,7 @@ class DbQueryPostgresWindowTest extends TestCase
             ->sql('postgres', true);
 
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $result);
-        $expected = 'SELECT id, name, salary, ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) AS "row_num" FROM "employees" WHERE salary > ?';
+        $expected = 'SELECT "id", "name", "salary", ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) AS "row_num" FROM "employees" WHERE "salary" > ?';
         $this->assertEquals($expected, $result->sql());
         $this->assertEquals([50000], $result->bindings());
     }
@@ -265,7 +273,7 @@ class DbQueryPostgresWindowTest extends TestCase
             ->from('data')
             ->sql('postgres', false);
 
-        $expected = 'SELECT id, value, NTH_VALUE(value, 3) OVER (ORDER BY id ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS "third_value" FROM "data"';
+        $expected = 'SELECT "id", "value", NTH_VALUE(value, 3) OVER (ORDER BY id ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS "third_value" FROM "data"';
         $this->assertEquals($expected, $sql);
     }
 
@@ -280,7 +288,7 @@ class DbQueryPostgresWindowTest extends TestCase
             ->from('transactions')
             ->sql('postgres', false);
 
-        $expected = 'SELECT date, amount, LAST_VALUE(amount) OVER (ORDER BY date ASC RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS "last_amount" FROM "transactions"';
+        $expected = 'SELECT "date", "amount", LAST_VALUE(amount) OVER (ORDER BY date ASC RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS "last_amount" FROM "transactions"';
         $this->assertEquals($expected, $sql);
     }
 
@@ -298,7 +306,7 @@ class DbQueryPostgresWindowTest extends TestCase
             ->from('active_emp')
             ->sql('postgres', false);
 
-        $expected = 'WITH "active_emp" AS (SELECT * FROM "employees" WHERE active = TRUE) SELECT id, name, ROW_NUMBER() OVER (ORDER BY id ASC) AS "row_num" FROM "active_emp"';
+        $expected = 'WITH "active_emp" AS (SELECT * FROM "employees" WHERE "active" = TRUE) SELECT "id", "name", ROW_NUMBER() OVER (ORDER BY id ASC) AS "row_num" FROM "active_emp"';
         $this->assertEquals($expected, $sql);
     }
 }

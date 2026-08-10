@@ -16,6 +16,14 @@ use PHPUnit\Framework\TestCase;
  *
  * Tests: INSERT INTO, columns, values, set, fromSelect (PostgreSQL dialect)
  */
+/*
+ * SQL-Pins am 2026-08-10 an das Auto-Quoting einfacher Identifier angepasst:
+ * WHERE/AND/OR-, HAVING-, ORDER-BY-, GROUP-BY-Felder und die SELECT-Feldliste
+ * quoten `ident` bzw. `alias.ident` jetzt dialektgerecht (MySQL/SQLite: Backtick,
+ * PostgreSQL: Double-Quote). Ausdruecke, '*', bereits Gequotetes und
+ * Expression::raw() bleiben byte-identisch roh. Alle Aenderungen in dieser
+ * Datei sind reine Quote-Zeichen-Diffs in erwarteten SQL-Strings.
+ */
 class DbInsertPostgresTest extends TestCase
 {
     public function testConstructor(): void
@@ -132,7 +140,7 @@ class DbInsertPostgresTest extends TestCase
             ->fromSelect($selectQuery)
             ->sql('postgres', false);
 
-        $expected = 'INSERT INTO "users" ("name", "email") SELECT name, email FROM "temp_users" WHERE status = \'pending\'';
+        $expected = 'INSERT INTO "users" ("name", "email") SELECT "name", "email" FROM "temp_users" WHERE "status" = \'pending\'';
         $this->assertEquals($expected, $sql);
     }
 
@@ -151,7 +159,7 @@ class DbInsertPostgresTest extends TestCase
             ->sql('postgres', true);
 
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $result);
-        $this->assertEquals('INSERT INTO "users" ("name", "email") SELECT name, email FROM "temp_users" WHERE status = ?', $result->sql());
+        $this->assertEquals('INSERT INTO "users" ("name", "email") SELECT "name", "email" FROM "temp_users" WHERE "status" = ?', $result->sql());
         $this->assertEquals(['pending'], $result->bindings());
     }
 

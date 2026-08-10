@@ -19,6 +19,14 @@ use UnexpectedValueException;
  * Tests: UPDATE, SET, WHERE (PostgreSQL dialect)
  * Note: PostgreSQL does not support JOIN, ORDER BY, or LIMIT in UPDATE statements
  */
+/*
+ * SQL-Pins am 2026-08-10 an das Auto-Quoting einfacher Identifier angepasst:
+ * WHERE/AND/OR-, HAVING-, ORDER-BY-, GROUP-BY-Felder und die SELECT-Feldliste
+ * quoten `ident` bzw. `alias.ident` jetzt dialektgerecht (MySQL/SQLite: Backtick,
+ * PostgreSQL: Double-Quote). Ausdruecke, '*', bereits Gequotetes und
+ * Expression::raw() bleiben byte-identisch roh. Alle Aenderungen in dieser
+ * Datei sind reine Quote-Zeichen-Diffs in erwarteten SQL-Strings.
+ */
 class DbUpdatePostgresTest extends TestCase
 {
     public function testConstructor(): void
@@ -36,7 +44,7 @@ class DbUpdatePostgresTest extends TestCase
             ->where('id')->equals(1)
             ->sql('postgres', false);
 
-        $expected = 'UPDATE "users" SET "name" = \'John Doe\' WHERE id = 1';
+        $expected = 'UPDATE "users" SET "name" = \'John Doe\' WHERE "id" = 1';
         $this->assertEquals($expected, $sql);
     }
 
@@ -50,7 +58,7 @@ class DbUpdatePostgresTest extends TestCase
             ->sql('postgres', true);
 
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $result);
-        $this->assertEquals('UPDATE "users" SET "name" = ? WHERE id = ?', $result->sql());
+        $this->assertEquals('UPDATE "users" SET "name" = ? WHERE "id" = ?', $result->sql());
         $this->assertEquals(['John Doe', 1], $result->bindings());
     }
 
@@ -67,7 +75,7 @@ class DbUpdatePostgresTest extends TestCase
             ->where('id')->equals(5)
             ->sql('postgres', false);
 
-        $expected = 'UPDATE "users" SET "name" = \'Jane Smith\', "email" = \'jane@example.com\', "status" = \'active\' WHERE id = 5';
+        $expected = 'UPDATE "users" SET "name" = \'Jane Smith\', "email" = \'jane@example.com\', "status" = \'active\' WHERE "id" = 5';
         $this->assertEquals($expected, $sql);
     }
 
@@ -85,7 +93,7 @@ class DbUpdatePostgresTest extends TestCase
             ->sql('postgres', true);
 
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $result);
-        $this->assertEquals('UPDATE "users" SET "name" = ?, "email" = ?, "status" = ? WHERE id = ?', $result->sql());
+        $this->assertEquals('UPDATE "users" SET "name" = ?, "email" = ?, "status" = ? WHERE "id" = ?', $result->sql());
         $this->assertEquals(['Jane Smith', 'jane@example.com', 'active', 5], $result->bindings());
     }
 
@@ -100,7 +108,7 @@ class DbUpdatePostgresTest extends TestCase
             ->where('id')->equals(1)
             ->sql('postgres', false);
 
-        $expected = 'UPDATE "users" SET "name" = \'John Doe\', "email" = \'john@example.com\', "age" = 30 WHERE id = 1';
+        $expected = 'UPDATE "users" SET "name" = \'John Doe\', "email" = \'john@example.com\', "age" = 30 WHERE "id" = 1';
         $this->assertEquals($expected, $sql);
     }
 
@@ -118,7 +126,7 @@ class DbUpdatePostgresTest extends TestCase
             ->sql('postgres', true);
 
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $result);
-        $this->assertEquals('UPDATE "users" SET "name" = ?, "email" = ?, "deleted_at" = ? WHERE id = ?', $result->sql());
+        $this->assertEquals('UPDATE "users" SET "name" = ?, "email" = ?, "deleted_at" = ? WHERE "id" = ?', $result->sql());
         $this->assertEquals(['John Doe', null, null, 1], $result->bindings());
     }
 
@@ -135,7 +143,7 @@ class DbUpdatePostgresTest extends TestCase
             ->sql('postgres', false);
 
         // PostgreSQL uses TRUE/FALSE for booleans
-        $expected = 'UPDATE "settings" SET "is_active" = TRUE, "is_deleted" = FALSE WHERE id = 1';
+        $expected = 'UPDATE "settings" SET "is_active" = TRUE, "is_deleted" = FALSE WHERE "id" = 1';
         $this->assertEquals($expected, $sql);
     }
 
@@ -152,7 +160,7 @@ class DbUpdatePostgresTest extends TestCase
             ->where('id')->equals(10)
             ->sql('postgres', false);
 
-        $expected = 'UPDATE "products" SET "price" = 19.99, "quantity" = 100, "discount" = 0 WHERE id = 10';
+        $expected = 'UPDATE "products" SET "price" = 19.99, "quantity" = 100, "discount" = 0 WHERE "id" = 10';
         $this->assertEquals($expected, $sql);
     }
 
@@ -170,7 +178,7 @@ class DbUpdatePostgresTest extends TestCase
             ->where('id')->equals(5)
             ->sql('postgres', false);
 
-        $expected = 'UPDATE "departments" SET "max_salary" = (SELECT MAX(salary) FROM "employees" WHERE department_id = 5) WHERE id = 5';
+        $expected = 'UPDATE "departments" SET "max_salary" = (SELECT MAX(salary) FROM "employees" WHERE "department_id" = 5) WHERE "id" = 5';
         $this->assertEquals($expected, $sql);
     }
 
@@ -189,7 +197,7 @@ class DbUpdatePostgresTest extends TestCase
             ->sql('postgres', true);
 
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $result);
-        $this->assertEquals('UPDATE "departments" SET "max_salary" = (SELECT MAX(salary) FROM "employees" WHERE department_id = ?) WHERE id = ?', $result->sql());
+        $this->assertEquals('UPDATE "departments" SET "max_salary" = (SELECT MAX(salary) FROM "employees" WHERE "department_id" = ?) WHERE "id" = ?', $result->sql());
         $this->assertEquals([5, 5], $result->bindings());
     }
 
@@ -202,7 +210,7 @@ class DbUpdatePostgresTest extends TestCase
             ->where('email')->equals('john@example.com')
             ->sql('postgres', false);
 
-        $expected = 'UPDATE "users" SET "status" = \'active\' WHERE email = \'john@example.com\'';
+        $expected = 'UPDATE "users" SET "status" = \'active\' WHERE "email" = \'john@example.com\'';
         $this->assertEquals($expected, $sql);
     }
 
@@ -215,7 +223,7 @@ class DbUpdatePostgresTest extends TestCase
             ->where('status')->notEquals('deleted')
             ->sql('postgres', false);
 
-        $expected = 'UPDATE "users" SET "active" = 1 WHERE status != \'deleted\'';
+        $expected = 'UPDATE "users" SET "active" = 1 WHERE "status" != \'deleted\'';
         $this->assertEquals($expected, $sql);
     }
 
@@ -228,7 +236,7 @@ class DbUpdatePostgresTest extends TestCase
             ->where('email')->like('%@example.com')
             ->sql('postgres', false);
 
-        $expected = 'UPDATE "users" SET "newsletter" = 1 WHERE email LIKE \'%@example.com\'';
+        $expected = 'UPDATE "users" SET "newsletter" = 1 WHERE "email" LIKE \'%@example.com\'';
         $this->assertEquals($expected, $sql);
     }
 
@@ -241,7 +249,7 @@ class DbUpdatePostgresTest extends TestCase
             ->where('id')->in([1, 2, 3, 4, 5])
             ->sql('postgres', false);
 
-        $expected = 'UPDATE "users" SET "status" = \'inactive\' WHERE id IN (1, 2, 3, 4, 5)';
+        $expected = 'UPDATE "users" SET "status" = \'inactive\' WHERE "id" IN (1, 2, 3, 4, 5)';
         $this->assertEquals($expected, $sql);
     }
 
@@ -284,7 +292,7 @@ class DbUpdatePostgresTest extends TestCase
             ->sql('postgres', true);
 
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $result);
-        $this->assertEquals('UPDATE "users" SET "status" = ? WHERE status = ? AND 1=0', $result->sql());
+        $this->assertEquals('UPDATE "users" SET "status" = ? WHERE "status" = ? AND 1=0', $result->sql());
         $this->assertEquals(['inactive', 'active'], $result->bindings());
     }
 
@@ -297,7 +305,7 @@ class DbUpdatePostgresTest extends TestCase
             ->where('price')->between(100, 500)
             ->sql('postgres', false);
 
-        $expected = 'UPDATE "products" SET "discount" = 10 WHERE price BETWEEN 100 AND 500';
+        $expected = 'UPDATE "products" SET "discount" = 10 WHERE "price" BETWEEN 100 AND 500';
         $this->assertEquals($expected, $sql);
     }
 
@@ -310,7 +318,7 @@ class DbUpdatePostgresTest extends TestCase
             ->where('verified_at')->isNull()
             ->sql('postgres', false);
 
-        $expected = 'UPDATE "users" SET "verified" = 0 WHERE verified_at IS NULL';
+        $expected = 'UPDATE "users" SET "verified" = 0 WHERE "verified_at" IS NULL';
         $this->assertEquals($expected, $sql);
     }
 
@@ -323,7 +331,7 @@ class DbUpdatePostgresTest extends TestCase
             ->where('email')->isNotNull()
             ->sql('postgres', false);
 
-        $expected = 'UPDATE "users" SET "active" = 1 WHERE email IS NOT NULL';
+        $expected = 'UPDATE "users" SET "active" = 1 WHERE "email" IS NOT NULL';
         $this->assertEquals($expected, $sql);
     }
 
@@ -337,7 +345,7 @@ class DbUpdatePostgresTest extends TestCase
             ->and('created_at')->lower('2020-01-01')
             ->sql('postgres', false);
 
-        $expected = 'UPDATE "users" SET "status" = \'archived\' WHERE active = 0 AND created_at < \'2020-01-01\'';
+        $expected = 'UPDATE "users" SET "status" = \'archived\' WHERE "active" = 0 AND "created_at" < \'2020-01-01\'';
         $this->assertEquals($expected, $sql);
     }
 
@@ -351,7 +359,7 @@ class DbUpdatePostgresTest extends TestCase
             ->or('role')->equals('moderator')
             ->sql('postgres', false);
 
-        $expected = 'UPDATE "users" SET "notification" = 1 WHERE role = \'admin\' OR role = \'moderator\'';
+        $expected = 'UPDATE "users" SET "notification" = 1 WHERE "role" = \'admin\' OR "role" = \'moderator\'';
         $this->assertEquals($expected, $sql);
     }
 
@@ -367,7 +375,7 @@ class DbUpdatePostgresTest extends TestCase
             ->and('verified')->equals(1, ')')
             ->sql('postgres', false);
 
-        $expected = 'UPDATE "users" SET "priority" = \'high\' WHERE (status = \'active\' AND role = \'premium\') OR (score > 1000 AND verified = 1)';
+        $expected = 'UPDATE "users" SET "priority" = \'high\' WHERE ("status" = \'active\' AND "role" = \'premium\') OR ("score" > 1000 AND "verified" = 1)';
         $this->assertEquals($expected, $sql);
     }
 
@@ -394,7 +402,7 @@ class DbUpdatePostgresTest extends TestCase
             ->andJson('settings')->extract('$.premium')->equals(true)
             ->sql('postgres', false);
 
-        $expected = 'UPDATE "users" SET "featured" = 1 WHERE status = \'active\' AND "settings"->>\'premium\' = TRUE';
+        $expected = 'UPDATE "users" SET "featured" = 1 WHERE "status" = \'active\' AND "settings"->>\'premium\' = TRUE';
         $this->assertEquals($expected, $sql);
     }
 
@@ -408,7 +416,7 @@ class DbUpdatePostgresTest extends TestCase
             ->orJson('attributes')->extract('$.discontinued')->equals(true)
             ->sql('postgres', false);
 
-        $expected = 'UPDATE "products" SET "visible" = 0 WHERE stock = 0 OR "attributes"->>\'discontinued\' = TRUE';
+        $expected = 'UPDATE "products" SET "visible" = 0 WHERE "stock" = 0 OR "attributes"->>\'discontinued\' = TRUE';
         $this->assertEquals($expected, $sql);
     }
 
@@ -427,7 +435,7 @@ class DbUpdatePostgresTest extends TestCase
             ->where()->exists($subquery)
             ->sql('postgres', false);
 
-        $expected = 'UPDATE "users" SET "has_pending_orders" = 1 WHERE EXISTS (SELECT 1 FROM "orders" WHERE orders.user_id = users.id AND orders.status = \'pending\')';
+        $expected = 'UPDATE "users" SET "has_pending_orders" = 1 WHERE EXISTS (SELECT 1 FROM "orders" WHERE "orders"."user_id" = users.id AND "orders"."status" = \'pending\')';
         $this->assertEquals($expected, $sql);
     }
 
@@ -445,7 +453,7 @@ class DbUpdatePostgresTest extends TestCase
             ->where()->notExists($subquery)
             ->sql('postgres', false);
 
-        $expected = 'UPDATE "users" SET "no_orders" = 1 WHERE NOT EXISTS (SELECT 1 FROM "orders" WHERE orders.user_id = users.id)';
+        $expected = 'UPDATE "users" SET "no_orders" = 1 WHERE NOT EXISTS (SELECT 1 FROM "orders" WHERE "orders"."user_id" = users.id)';
         $this->assertEquals($expected, $sql);
     }
 
@@ -458,7 +466,7 @@ class DbUpdatePostgresTest extends TestCase
             ->where('id')->equals(1)
             ->sql('postgres', false);
 
-        $expected = 'UPDATE "users" SET "updated_at" = NOW() WHERE id = 1';
+        $expected = 'UPDATE "users" SET "updated_at" = NOW() WHERE "id" = 1';
         $this->assertEquals($expected, $sql);
     }
 
@@ -473,7 +481,7 @@ class DbUpdatePostgresTest extends TestCase
             ->sql('postgres', true);
 
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $result);
-        $this->assertEquals('UPDATE "users" SET "updated_at" = NOW(), "name" = ? WHERE id = ?', $result->sql());
+        $this->assertEquals('UPDATE "users" SET "updated_at" = NOW(), "name" = ? WHERE "id" = ?', $result->sql());
         $this->assertEquals(['John', 1], $result->bindings());
     }
 
@@ -499,7 +507,7 @@ class DbUpdatePostgresTest extends TestCase
             ->where('u.id')->equals(1)
             ->sql('postgres', false);
 
-        $expected = 'UPDATE "users" "u" SET "u.updated_at" = \'2024-01-01\' WHERE u.id = 1';
+        $expected = 'UPDATE "users" "u" SET "u.updated_at" = \'2024-01-01\' WHERE "u"."id" = 1';
         $this->assertEquals($expected, $sql);
     }
 

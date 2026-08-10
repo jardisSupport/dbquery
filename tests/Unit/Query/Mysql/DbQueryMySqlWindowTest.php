@@ -14,6 +14,14 @@ use PHPUnit\Framework\TestCase;
  *
  * Tests: Window functions (ROW_NUMBER, RANK, SUM, etc.), Named windows, PARTITION BY, ORDER BY, Frames
  */
+/*
+ * SQL-Pins am 2026-08-10 an das Auto-Quoting einfacher Identifier angepasst:
+ * WHERE/AND/OR-, HAVING-, ORDER-BY-, GROUP-BY-Felder und die SELECT-Feldliste
+ * quoten `ident` bzw. `alias.ident` jetzt dialektgerecht (MySQL/SQLite: Backtick,
+ * PostgreSQL: Double-Quote). Ausdruecke, '*', bereits Gequotetes und
+ * Expression::raw() bleiben byte-identisch roh. Alle Aenderungen in dieser
+ * Datei sind reine Quote-Zeichen-Diffs in erwarteten SQL-Strings.
+ */
 class DbQueryMySqlWindowTest extends TestCase
 {
     public function testSelectWindowWithRowNumber(): void
@@ -29,7 +37,7 @@ class DbQueryMySqlWindowTest extends TestCase
         $this->assertInstanceOf(DbQuery::class, $result);
 
         $sql = $query->sql('mysql', false);
-        $expected = 'SELECT id, name, salary, ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) AS `row_num` FROM `employees`';
+        $expected = 'SELECT `id`, `name`, `salary`, ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) AS `row_num` FROM `employees`';
         $this->assertEquals($expected, $sql);
     }
 
@@ -43,7 +51,7 @@ class DbQueryMySqlWindowTest extends TestCase
             ->from('players')
             ->sql('mysql', false);
 
-        $expected = 'SELECT id, score, RANK() OVER (ORDER BY score DESC) AS `rank` FROM `players`';
+        $expected = 'SELECT `id`, `score`, RANK() OVER (ORDER BY score DESC) AS `rank` FROM `players`';
         $this->assertEquals($expected, $sql);
     }
 
@@ -57,7 +65,7 @@ class DbQueryMySqlWindowTest extends TestCase
             ->from('transactions')
             ->sql('mysql', false);
 
-        $expected = 'SELECT date, amount, SUM(amount) OVER (ORDER BY date ASC) AS `running_total` FROM `transactions`';
+        $expected = 'SELECT `date`, `amount`, SUM(amount) OVER (ORDER BY date ASC) AS `running_total` FROM `transactions`';
         $this->assertEquals($expected, $sql);
     }
 
@@ -71,7 +79,7 @@ class DbQueryMySqlWindowTest extends TestCase
             ->from('stock_prices')
             ->sql('mysql', false);
 
-        $expected = 'SELECT date, price, LAG(price, 1) OVER (ORDER BY date ASC) AS `prev_price` FROM `stock_prices`';
+        $expected = 'SELECT `date`, `price`, LAG(price, 1) OVER (ORDER BY date ASC) AS `prev_price` FROM `stock_prices`';
         $this->assertEquals($expected, $sql);
     }
 
@@ -86,7 +94,7 @@ class DbQueryMySqlWindowTest extends TestCase
             ->from('employees')
             ->sql('mysql', false);
 
-        $expected = 'SELECT id, name, ROW_NUMBER() OVER (PARTITION BY department, location ORDER BY hire_date ASC) AS `row_num` FROM `employees`';
+        $expected = 'SELECT `id`, `name`, ROW_NUMBER() OVER (PARTITION BY department, location ORDER BY hire_date ASC) AS `row_num` FROM `employees`';
         $this->assertEquals($expected, $sql);
     }
 
@@ -102,7 +110,7 @@ class DbQueryMySqlWindowTest extends TestCase
             ->from('employees')
             ->sql('mysql', false);
 
-        $expected = 'SELECT id, name, salary, RANK() OVER (PARTITION BY department ORDER BY salary DESC, hire_date ASC) AS `rank` FROM `employees`';
+        $expected = 'SELECT `id`, `name`, `salary`, RANK() OVER (PARTITION BY department ORDER BY salary DESC, hire_date ASC) AS `rank` FROM `employees`';
         $this->assertEquals($expected, $sql);
     }
 
@@ -117,7 +125,7 @@ class DbQueryMySqlWindowTest extends TestCase
             ->from('sales')
             ->sql('mysql', false);
 
-        $expected = 'SELECT date, amount, AVG(amount) OVER (ORDER BY date ASC ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS `moving_avg` FROM `sales`';
+        $expected = 'SELECT `date`, `amount`, AVG(amount) OVER (ORDER BY date ASC ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS `moving_avg` FROM `sales`';
         $this->assertEquals($expected, $sql);
     }
 
@@ -132,7 +140,7 @@ class DbQueryMySqlWindowTest extends TestCase
             ->from('data')
             ->sql('mysql', false);
 
-        $expected = 'SELECT id, value, SUM(value) OVER (ORDER BY id ASC RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS `total` FROM `data`';
+        $expected = 'SELECT `id`, `value`, SUM(value) OVER (ORDER BY id ASC RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS `total` FROM `data`';
         $this->assertEquals($expected, $sql);
     }
 
@@ -151,7 +159,7 @@ class DbQueryMySqlWindowTest extends TestCase
             ->from('employees')
             ->sql('mysql', false);
 
-        $expected = 'SELECT id, name, salary, ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) AS `row_num`, RANK() OVER (PARTITION BY department ORDER BY salary DESC) AS `rank` FROM `employees`';
+        $expected = 'SELECT `id`, `name`, `salary`, ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) AS `row_num`, RANK() OVER (PARTITION BY department ORDER BY salary DESC) AS `rank` FROM `employees`';
         $this->assertEquals($expected, $sql);
     }
 
@@ -171,7 +179,7 @@ class DbQueryMySqlWindowTest extends TestCase
             ->from('employees')
             ->sql('mysql', false);
 
-        $expected = 'SELECT id, name, salary, ROW_NUMBER() OVER dept_window AS `row_num`, RANK() OVER dept_window AS `rank` FROM `employees` WINDOW dept_window AS (PARTITION BY department ORDER BY salary DESC)';
+        $expected = 'SELECT `id`, `name`, `salary`, ROW_NUMBER() OVER dept_window AS `row_num`, RANK() OVER dept_window AS `rank` FROM `employees` WINDOW dept_window AS (PARTITION BY department ORDER BY salary DESC)';
         $this->assertEquals($expected, $sql);
     }
 
@@ -187,7 +195,7 @@ class DbQueryMySqlWindowTest extends TestCase
             ->from('metrics')
             ->sql('mysql', false);
 
-        $expected = 'SELECT timestamp, value, SUM(value) OVER time_window AS `running_total`, LAG(value, 1) OVER time_window AS `prev_value` FROM `metrics` WINDOW time_window AS (ORDER BY timestamp ASC)';
+        $expected = 'SELECT `timestamp`, `value`, SUM(value) OVER time_window AS `running_total`, LAG(value, 1) OVER time_window AS `prev_value` FROM `metrics` WINDOW time_window AS (ORDER BY timestamp ASC)';
         $this->assertEquals($expected, $sql);
     }
 
@@ -208,7 +216,7 @@ class DbQueryMySqlWindowTest extends TestCase
             ->from('employees')
             ->sql('mysql', false);
 
-        $expected = 'SELECT id, name, ROW_NUMBER() OVER by_dept AS `dept_seniority`, RANK() OVER by_team AS `team_rank` FROM `employees` WINDOW by_dept AS (PARTITION BY department ORDER BY hire_date ASC), by_team AS (PARTITION BY team ORDER BY performance DESC)';
+        $expected = 'SELECT `id`, `name`, ROW_NUMBER() OVER by_dept AS `dept_seniority`, RANK() OVER by_team AS `team_rank` FROM `employees` WINDOW by_dept AS (PARTITION BY department ORDER BY hire_date ASC), by_team AS (PARTITION BY team ORDER BY performance DESC)';
         $this->assertEquals($expected, $sql);
     }
 
@@ -232,7 +240,7 @@ class DbQueryMySqlWindowTest extends TestCase
             ->where('active')->equals(1)
             ->sql('mysql', false);
 
-        $expected = 'SELECT id, name, salary, ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) AS `row_num` FROM `employees` WHERE active = 1';
+        $expected = 'SELECT `id`, `name`, `salary`, ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) AS `row_num` FROM `employees` WHERE `active` = 1';
         $this->assertEquals($expected, $sql);
     }
 
@@ -248,7 +256,7 @@ class DbQueryMySqlWindowTest extends TestCase
             ->having('COUNT(*)')->greater(5)
             ->sql('mysql', false);
 
-        $expected = 'SELECT department, COUNT(*) as emp_count, RANK() OVER (ORDER BY COUNT(*) DESC) AS `dept_rank` FROM `employees` GROUP BY department HAVING COUNT(*) > 5';
+        $expected = 'SELECT `department`, COUNT(*) as `emp_count`, RANK() OVER (ORDER BY COUNT(*) DESC) AS `dept_rank` FROM `employees` GROUP BY `department` HAVING COUNT(*) > 5';
         $this->assertEquals($expected, $sql);
     }
 
@@ -265,7 +273,7 @@ class DbQueryMySqlWindowTest extends TestCase
             ->sql('mysql', true);
 
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $result);
-        $expected = 'SELECT id, name, salary, ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) AS `row_num` FROM `employees` WHERE salary > ?';
+        $expected = 'SELECT `id`, `name`, `salary`, ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) AS `row_num` FROM `employees` WHERE `salary` > ?';
         $this->assertEquals($expected, $result->sql());
         $this->assertEquals([50000], $result->bindings());
     }
@@ -280,7 +288,7 @@ class DbQueryMySqlWindowTest extends TestCase
             ->from('employees')
             ->sql('mysql', false);
 
-        $expected = 'SELECT id, department, COUNT(*) OVER (PARTITION BY department) AS `dept_count` FROM `employees`';
+        $expected = 'SELECT `id`, `department`, COUNT(*) OVER (PARTITION BY department) AS `dept_count` FROM `employees`';
         $this->assertEquals($expected, $sql);
     }
 
@@ -294,7 +302,7 @@ class DbQueryMySqlWindowTest extends TestCase
             ->from('data')
             ->sql('mysql', false);
 
-        $expected = 'SELECT id, value, SUM(value) OVER (ORDER BY id ASC) AS `cumulative` FROM `data`';
+        $expected = 'SELECT `id`, `value`, SUM(value) OVER (ORDER BY id ASC) AS `cumulative` FROM `data`';
         $this->assertEquals($expected, $sql);
     }
 
@@ -311,7 +319,7 @@ class DbQueryMySqlWindowTest extends TestCase
             ->where('category')->notEquals('void')
             ->sql('mysql', false);
 
-        $expected = 'SELECT date, amount, category, AVG(amount) OVER (PARTITION BY category ORDER BY date ASC ROWS BETWEEN 3 PRECEDING AND 1 FOLLOWING) AS `moving_avg` FROM `transactions` WHERE category != \'void\'';
+        $expected = 'SELECT `date`, `amount`, `category`, AVG(amount) OVER (PARTITION BY category ORDER BY date ASC ROWS BETWEEN 3 PRECEDING AND 1 FOLLOWING) AS `moving_avg` FROM `transactions` WHERE `category` != \'void\'';
         $this->assertEquals($expected, $sql);
     }
 }

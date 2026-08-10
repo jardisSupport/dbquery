@@ -14,6 +14,14 @@ use PHPUnit\Framework\TestCase;
  *
  * Tests: WHERE conditions, operators, AND, OR, brackets
  */
+/*
+ * SQL-Pins am 2026-08-10 an das Auto-Quoting einfacher Identifier angepasst:
+ * WHERE/AND/OR-, HAVING-, ORDER-BY-, GROUP-BY-Felder und die SELECT-Feldliste
+ * quoten `ident` bzw. `alias.ident` jetzt dialektgerecht (MySQL/SQLite: Backtick,
+ * PostgreSQL: Double-Quote). Ausdruecke, '*', bereits Gequotetes und
+ * Expression::raw() bleiben byte-identisch roh. Alle Aenderungen in dieser
+ * Datei sind reine Quote-Zeichen-Diffs in erwarteten SQL-Strings.
+ */
 class DbQueryPostgresWhereTest extends TestCase
 {
     public function testWhereEquals(): void
@@ -25,11 +33,11 @@ class DbQueryPostgresWhereTest extends TestCase
             ->where('id')->equals(123)
             ->sql('postgres', false);
 
-        $this->assertEquals('SELECT * FROM "users" WHERE id = 123', $sql);
+        $this->assertEquals('SELECT * FROM "users" WHERE "id" = 123', $sql);
 
         $prepared = $query->sql('postgres', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM "users" WHERE id = ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM "users" WHERE "id" = ?', $prepared->sql());
         $this->assertEquals([123], $prepared->bindings());
     }
 
@@ -42,11 +50,11 @@ class DbQueryPostgresWhereTest extends TestCase
             ->where('name')->equals('John')
             ->sql('postgres', false);
 
-        $this->assertEquals("SELECT * FROM \"users\" WHERE name = 'John'", $sql);
+        $this->assertEquals("SELECT * FROM \"users\" WHERE \"name\" = 'John'", $sql);
 
         $prepared = $query->sql('postgres', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM "users" WHERE name = ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM "users" WHERE "name" = ?', $prepared->sql());
         $this->assertEquals(['John'], $prepared->bindings());
     }
 
@@ -59,11 +67,11 @@ class DbQueryPostgresWhereTest extends TestCase
             ->where('age')->greater(18)
             ->sql('postgres', false);
 
-        $this->assertEquals('SELECT * FROM "users" WHERE age > 18', $sql);
+        $this->assertEquals('SELECT * FROM "users" WHERE "age" > 18', $sql);
 
         $prepared = $query->sql('postgres', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM "users" WHERE age > ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM "users" WHERE "age" > ?', $prepared->sql());
         $this->assertEquals([18], $prepared->bindings());
     }
 
@@ -76,11 +84,11 @@ class DbQueryPostgresWhereTest extends TestCase
             ->where('age')->lower(65)
             ->sql('postgres', false);
 
-        $this->assertEquals('SELECT * FROM "users" WHERE age < 65', $sql);
+        $this->assertEquals('SELECT * FROM "users" WHERE "age" < 65', $sql);
 
         $prepared = $query->sql('postgres', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM "users" WHERE age < ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM "users" WHERE "age" < ?', $prepared->sql());
         $this->assertEquals([65], $prepared->bindings());
     }
 
@@ -93,11 +101,11 @@ class DbQueryPostgresWhereTest extends TestCase
             ->where('age')->between(18, 65)
             ->sql('postgres', false);
 
-        $this->assertEquals('SELECT * FROM "users" WHERE age BETWEEN 18 AND 65', $sql);
+        $this->assertEquals('SELECT * FROM "users" WHERE "age" BETWEEN 18 AND 65', $sql);
 
         $prepared = $query->sql('postgres', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM "users" WHERE age BETWEEN ? AND ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM "users" WHERE "age" BETWEEN ? AND ?', $prepared->sql());
         $this->assertEquals([18, 65], $prepared->bindings());
     }
 
@@ -110,11 +118,11 @@ class DbQueryPostgresWhereTest extends TestCase
             ->where('status')->in(['active', 'pending'])
             ->sql('postgres', false);
 
-        $this->assertEquals("SELECT * FROM \"users\" WHERE status IN ('active', 'pending')", $sql);
+        $this->assertEquals("SELECT * FROM \"users\" WHERE \"status\" IN ('active', 'pending')", $sql);
 
         $prepared = $query->sql('postgres', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM "users" WHERE status IN (?, ?)', $prepared->sql());
+        $this->assertEquals('SELECT * FROM "users" WHERE "status" IN (?, ?)', $prepared->sql());
         $this->assertEquals(['active', 'pending'], $prepared->bindings());
     }
 
@@ -162,10 +170,10 @@ class DbQueryPostgresWhereTest extends TestCase
             ->and('id')->in([])
             ->sql('postgres', false);
 
-        $this->assertEquals("SELECT * FROM \"users\" WHERE status = 'active' AND 1=0", $sql);
+        $this->assertEquals("SELECT * FROM \"users\" WHERE \"status\" = 'active' AND 1=0", $sql);
 
         $prepared = $query->sql('postgres', true);
-        $this->assertEquals('SELECT * FROM "users" WHERE status = ? AND 1=0', $prepared->sql());
+        $this->assertEquals('SELECT * FROM "users" WHERE "status" = ? AND 1=0', $prepared->sql());
         $this->assertEquals(['active'], $prepared->bindings());
     }
 
@@ -179,7 +187,7 @@ class DbQueryPostgresWhereTest extends TestCase
             ->or('id')->in([])
             ->sql('postgres', false);
 
-        $this->assertEquals("SELECT * FROM \"users\" WHERE status = 'active' OR 1=0", $sql);
+        $this->assertEquals("SELECT * FROM \"users\" WHERE \"status\" = 'active' OR 1=0", $sql);
     }
 
     public function testWhereInEmptyArrayWithBrackets(): void
@@ -192,7 +200,7 @@ class DbQueryPostgresWhereTest extends TestCase
             ->and('(id')->in([], ')')
             ->sql('postgres', false);
 
-        $this->assertEquals("SELECT * FROM \"users\" WHERE status = 'active' AND (1=0)", $sql);
+        $this->assertEquals("SELECT * FROM \"users\" WHERE \"status\" = 'active' AND (1=0)", $sql);
     }
 
     public function testWhereNotInEmptyArrayWithOtherConditions(): void
@@ -205,7 +213,7 @@ class DbQueryPostgresWhereTest extends TestCase
             ->and('id')->notIn([])
             ->sql('postgres', false);
 
-        $this->assertEquals("SELECT * FROM \"users\" WHERE status = 'active' AND 1=1", $sql);
+        $this->assertEquals("SELECT * FROM \"users\" WHERE \"status\" = 'active' AND 1=1", $sql);
     }
 
     public function testWhereLike(): void
@@ -217,11 +225,11 @@ class DbQueryPostgresWhereTest extends TestCase
             ->where('name')->like('%John%')
             ->sql('postgres', false);
 
-        $this->assertEquals("SELECT * FROM \"users\" WHERE name LIKE '%John%'", $sql);
+        $this->assertEquals("SELECT * FROM \"users\" WHERE \"name\" LIKE '%John%'", $sql);
 
         $prepared = $query->sql('postgres', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM "users" WHERE name LIKE ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM "users" WHERE "name" LIKE ?', $prepared->sql());
         $this->assertEquals(['%John%'], $prepared->bindings());
     }
 
@@ -234,7 +242,7 @@ class DbQueryPostgresWhereTest extends TestCase
             ->where('deleted_at')->isNull()
             ->sql('postgres', false);
 
-        $this->assertEquals('SELECT * FROM "users" WHERE deleted_at IS NULL', $sql);
+        $this->assertEquals('SELECT * FROM "users" WHERE "deleted_at" IS NULL', $sql);
     }
 
     public function testWhereIsNotNull(): void
@@ -246,7 +254,7 @@ class DbQueryPostgresWhereTest extends TestCase
             ->where('email')->isNotNull()
             ->sql('postgres', false);
 
-        $this->assertEquals('SELECT * FROM "users" WHERE email IS NOT NULL', $sql);
+        $this->assertEquals('SELECT * FROM "users" WHERE "email" IS NOT NULL', $sql);
     }
 
     public function testMultipleWhereWithAnd(): void
@@ -259,11 +267,11 @@ class DbQueryPostgresWhereTest extends TestCase
             ->and('status')->equals('active')
             ->sql('postgres', false);
 
-        $this->assertEquals("SELECT * FROM \"users\" WHERE age > 18 AND status = 'active'", $sql);
+        $this->assertEquals("SELECT * FROM \"users\" WHERE \"age\" > 18 AND \"status\" = 'active'", $sql);
 
         $prepared = $query->sql('postgres', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM "users" WHERE age > ? AND status = ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM "users" WHERE "age" > ? AND "status" = ?', $prepared->sql());
         $this->assertEquals([18, 'active'], $prepared->bindings());
     }
 
@@ -277,11 +285,11 @@ class DbQueryPostgresWhereTest extends TestCase
             ->or('age')->greater(65)
             ->sql('postgres', false);
 
-        $this->assertEquals('SELECT * FROM "users" WHERE age < 18 OR age > 65', $sql);
+        $this->assertEquals('SELECT * FROM "users" WHERE "age" < 18 OR "age" > 65', $sql);
 
         $prepared = $query->sql('postgres', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM "users" WHERE age < ? OR age > ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM "users" WHERE "age" < ? OR "age" > ?', $prepared->sql());
         $this->assertEquals([18, 65], $prepared->bindings());
     }
 
@@ -295,11 +303,11 @@ class DbQueryPostgresWhereTest extends TestCase
             ->and('age')->lower(65, ')')
             ->sql('postgres', false);
 
-        $this->assertEquals('SELECT * FROM "users" WHERE (age > 18 AND age < 65)', $sql);
+        $this->assertEquals('SELECT * FROM "users" WHERE (age > 18 AND "age" < 65)', $sql);
 
         $prepared = $query->sql('postgres', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM "users" WHERE (age > ? AND age < ?)', $prepared->sql());
+        $this->assertEquals('SELECT * FROM "users" WHERE (age > ? AND "age" < ?)', $prepared->sql());
         $this->assertEquals([18, 65], $prepared->bindings());
     }
 
@@ -314,11 +322,11 @@ class DbQueryPostgresWhereTest extends TestCase
             ->or('role')->equals('admin')
             ->sql('postgres', false);
 
-        $this->assertEquals("SELECT * FROM \"users\" WHERE (status = 'active' AND age > 18) OR role = 'admin'", $sql);
+        $this->assertEquals("SELECT * FROM \"users\" WHERE (status = 'active' AND \"age\" > 18) OR \"role\" = 'admin'", $sql);
 
         $prepared = $query->sql('postgres', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM "users" WHERE (status = ? AND age > ?) OR role = ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM "users" WHERE (status = ? AND "age" > ?) OR "role" = ?', $prepared->sql());
         $this->assertEquals(['active', 18, 'admin'], $prepared->bindings());
     }
 
@@ -340,7 +348,7 @@ class DbQueryPostgresWhereTest extends TestCase
 
         $this->assertIsString($sql);
         $this->assertStringContainsString('SELECT * FROM "users"', $sql);
-        $this->assertStringContainsString('WHERE id IN (SELECT user_id FROM "orders" WHERE status = \'completed\')', $sql);
+        $this->assertStringContainsString('WHERE "id" IN (SELECT "user_id" FROM "orders" WHERE "status" = \'completed\')', $sql);
     }
 
     public function testWhereJsonExtract(): void
@@ -366,7 +374,7 @@ class DbQueryPostgresWhereTest extends TestCase
 
         $sql = $query->sql('postgres', false);
 
-        $this->assertStringContainsString('WHERE active = 1', $sql);
+        $this->assertStringContainsString('WHERE "active" = 1', $sql);
         $this->assertStringContainsString('AND "settings"->>\'theme\' = \'dark\'', $sql);
     }
 
@@ -380,7 +388,7 @@ class DbQueryPostgresWhereTest extends TestCase
 
         $sql = $query->sql('postgres', false);
 
-        $this->assertStringContainsString('WHERE status = \'active\'', $sql);
+        $this->assertStringContainsString('WHERE "status" = \'active\'', $sql);
         $this->assertStringContainsString('OR "preferences"->>\'notifications\' = TRUE', $sql);
     }
 
@@ -394,7 +402,7 @@ class DbQueryPostgresWhereTest extends TestCase
 
         $sql = $query->sql('postgres', false);
 
-        $this->assertStringContainsString('GROUP BY user_id', $sql);
+        $this->assertStringContainsString('GROUP BY "user_id"', $sql);
         $this->assertStringContainsString('HAVING "metadata"->>\'priority\' = \'high\'', $sql);
     }
 
@@ -440,14 +448,14 @@ class DbQueryPostgresWhereTest extends TestCase
             ->sql('postgres', false);
 
         $this->assertEquals(
-            'SELECT * FROM "users" WHERE status = \'active\' AND EXTRACT(YEAR FROM created_at) = 2024',
+            'SELECT * FROM "users" WHERE "status" = \'active\' AND EXTRACT(YEAR FROM created_at) = 2024',
             $sql
         );
 
         $prepared = $query->sql('postgres', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
         $this->assertEquals(
-            'SELECT * FROM "users" WHERE status = ? AND EXTRACT(YEAR FROM created_at) = ?',
+            'SELECT * FROM "users" WHERE "status" = ? AND EXTRACT(YEAR FROM created_at) = ?',
             $prepared->sql()
         );
         $this->assertEquals(['active', 2024], $prepared->bindings());
@@ -464,13 +472,13 @@ class DbQueryPostgresWhereTest extends TestCase
             ->sql('postgres', false);
 
         $this->assertEquals(
-            'SELECT * FROM "users" WHERE name LIKE \'%John%\' OR LOWER(email) LIKE \'%john%\'',
+            'SELECT * FROM "users" WHERE "name" LIKE \'%John%\' OR LOWER(email) LIKE \'%john%\'',
             $sql
         );
 
         $prepared = $query->sql('postgres', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM "users" WHERE name LIKE ? OR LOWER(email) LIKE ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM "users" WHERE "name" LIKE ? OR LOWER(email) LIKE ?', $prepared->sql());
         $this->assertEquals(['%John%', '%john%'], $prepared->bindings());
     }
 
@@ -537,14 +545,14 @@ class DbQueryPostgresWhereTest extends TestCase
             ->sql('postgres', false);
 
         $this->assertEquals(
-            'SELECT * FROM "products" WHERE (stock_level > 0 AND price * 0.8 < 100) OR featured = 1',
+            'SELECT * FROM "products" WHERE (stock_level > 0 AND price * 0.8 < 100) OR "featured" = 1',
             $sql
         );
 
         $prepared = $query->sql('postgres', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
         $this->assertEquals(
-            'SELECT * FROM "products" WHERE (stock_level > ? AND price * 0.8 < ?) OR featured = ?',
+            'SELECT * FROM "products" WHERE (stock_level > ? AND price * 0.8 < ?) OR "featured" = ?',
             $prepared->sql()
         );
         $this->assertEquals([0, 100, 1], $prepared->bindings());

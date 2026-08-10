@@ -13,6 +13,14 @@ use PHPUnit\Framework\TestCase;
  *
  * Tests: Constructor, SELECT, FROM, DISTINCT, Alias
  */
+/*
+ * SQL-Pins am 2026-08-10 an das Auto-Quoting einfacher Identifier angepasst:
+ * WHERE/AND/OR-, HAVING-, ORDER-BY-, GROUP-BY-Felder und die SELECT-Feldliste
+ * quoten `ident` bzw. `alias.ident` jetzt dialektgerecht (MySQL/SQLite: Backtick,
+ * PostgreSQL: Double-Quote). Ausdruecke, '*', bereits Gequotetes und
+ * Expression::raw() bleiben byte-identisch roh. Alle Aenderungen in dieser
+ * Datei sind reine Quote-Zeichen-Diffs in erwarteten SQL-Strings.
+ */
 class DbQuerySqliteBasicTest extends TestCase
 {
     public function testConstructor(): void
@@ -35,14 +43,14 @@ class DbQuerySqliteBasicTest extends TestCase
     {
         $query = new DbQuery();
         $sql = $query->select('id')->from('users')->sql('sqlite', false);
-        $this->assertEquals('SELECT id FROM `users`', $sql);
+        $this->assertEquals('SELECT `id` FROM `users`', $sql);
     }
 
     public function testSelectWithMultipleFields(): void
     {
         $query = new DbQuery();
         $sql = $query->select('id, name, email')->from('users')->sql('sqlite', false);
-        $this->assertEquals('SELECT id, name, email FROM `users`', $sql);
+        $this->assertEquals('SELECT `id`, `name`, `email` FROM `users`', $sql);
     }
 
     public function testDistinct(): void
@@ -52,7 +60,7 @@ class DbQuerySqliteBasicTest extends TestCase
         $this->assertSame($query, $result);
 
         $sql = $query->select('name')->from('users')->sql('sqlite', false);
-        $this->assertEquals('SELECT DISTINCT name FROM `users`', $sql);
+        $this->assertEquals('SELECT DISTINCT `name` FROM `users`', $sql);
     }
 
     public function testFromWithTableName(): void

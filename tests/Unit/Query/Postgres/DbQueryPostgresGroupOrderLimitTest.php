@@ -13,6 +13,14 @@ use PHPUnit\Framework\TestCase;
  *
  * Tests: GROUP BY, HAVING, ORDER BY, LIMIT, OFFSET
  */
+/*
+ * SQL-Pins am 2026-08-10 an das Auto-Quoting einfacher Identifier angepasst:
+ * WHERE/AND/OR-, HAVING-, ORDER-BY-, GROUP-BY-Felder und die SELECT-Feldliste
+ * quoten `ident` bzw. `alias.ident` jetzt dialektgerecht (MySQL/SQLite: Backtick,
+ * PostgreSQL: Double-Quote). Ausdruecke, '*', bereits Gequotetes und
+ * Expression::raw() bleiben byte-identisch roh. Alle Aenderungen in dieser
+ * Datei sind reine Quote-Zeichen-Diffs in erwarteten SQL-Strings.
+ */
 class DbQueryPostgresGroupOrderLimitTest extends TestCase
 {
     public function testGroupBySingleColumn(): void
@@ -24,7 +32,7 @@ class DbQueryPostgresGroupOrderLimitTest extends TestCase
             ->groupBy('status')
             ->sql('postgres', false);
 
-        $this->assertEquals('SELECT status, COUNT(*) as count FROM "users" GROUP BY status', $sql);
+        $this->assertEquals('SELECT "status", COUNT(*) as "count" FROM "users" GROUP BY "status"', $sql);
     }
 
     public function testGroupByMultipleColumns(): void
@@ -36,7 +44,7 @@ class DbQueryPostgresGroupOrderLimitTest extends TestCase
             ->groupBy('status', 'role')
             ->sql('postgres', false);
 
-        $this->assertEquals('SELECT status, role, COUNT(*) FROM "users" GROUP BY status, role', $sql);
+        $this->assertEquals('SELECT "status", "role", COUNT(*) FROM "users" GROUP BY "status", "role"', $sql);
     }
 
     public function testHavingWithCount(): void
@@ -49,11 +57,11 @@ class DbQueryPostgresGroupOrderLimitTest extends TestCase
             ->having('COUNT(*)')->greater(5)
             ->sql('postgres', false);
 
-        $this->assertEquals('SELECT status, COUNT(*) as count FROM "users" GROUP BY status HAVING COUNT(*) > 5', $sql);
+        $this->assertEquals('SELECT "status", COUNT(*) as "count" FROM "users" GROUP BY "status" HAVING COUNT(*) > 5', $sql);
 
         $prepared = $query->sql('postgres', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT status, COUNT(*) as count FROM "users" GROUP BY status HAVING COUNT(*) > ?', $prepared->sql());
+        $this->assertEquals('SELECT "status", COUNT(*) as "count" FROM "users" GROUP BY "status" HAVING COUNT(*) > ?', $prepared->sql());
         $this->assertEquals([5], $prepared->bindings());
     }
 
@@ -68,11 +76,11 @@ class DbQueryPostgresGroupOrderLimitTest extends TestCase
             ->and('COUNT(*)')->lower(100)
             ->sql('postgres', false);
 
-        $this->assertEquals('SELECT status, COUNT(*) as count FROM "users" GROUP BY status HAVING COUNT(*) > 5 AND COUNT(*) < 100', $sql);
+        $this->assertEquals('SELECT "status", COUNT(*) as "count" FROM "users" GROUP BY "status" HAVING COUNT(*) > 5 AND COUNT(*) < 100', $sql);
 
         $prepared = $query->sql('postgres', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT status, COUNT(*) as count FROM "users" GROUP BY status HAVING COUNT(*) > ? AND COUNT(*) < ?', $prepared->sql());
+        $this->assertEquals('SELECT "status", COUNT(*) as "count" FROM "users" GROUP BY "status" HAVING COUNT(*) > ? AND COUNT(*) < ?', $prepared->sql());
         $this->assertEquals([5, 100], $prepared->bindings());
     }
 
@@ -85,7 +93,7 @@ class DbQueryPostgresGroupOrderLimitTest extends TestCase
             ->orderBy('name')
             ->sql('postgres', false);
 
-        $this->assertEquals('SELECT * FROM "users" ORDER BY name ASC', $sql);
+        $this->assertEquals('SELECT * FROM "users" ORDER BY "name" ASC', $sql);
     }
 
     public function testOrderByDescending(): void
@@ -97,7 +105,7 @@ class DbQueryPostgresGroupOrderLimitTest extends TestCase
             ->orderBy('created_at', 'DESC')
             ->sql('postgres', false);
 
-        $this->assertEquals('SELECT * FROM "users" ORDER BY created_at DESC', $sql);
+        $this->assertEquals('SELECT * FROM "users" ORDER BY "created_at" DESC', $sql);
     }
 
     public function testOrderByMultipleColumns(): void
@@ -110,7 +118,7 @@ class DbQueryPostgresGroupOrderLimitTest extends TestCase
             ->orderBy('name', 'DESC')
             ->sql('postgres', false);
 
-        $this->assertEquals('SELECT * FROM "users" ORDER BY status ASC, name DESC', $sql);
+        $this->assertEquals('SELECT * FROM "users" ORDER BY "status" ASC, "name" DESC', $sql);
     }
 
     public function testLimitOnly(): void
@@ -151,24 +159,24 @@ class DbQueryPostgresGroupOrderLimitTest extends TestCase
             ->limit(10)
             ->sql('postgres', false);
 
-        $expected = "SELECT u.id, u.name, COUNT(p.id) as post_count FROM \"users\" \"u\" "
+        $expected = "SELECT \"u\".\"id\", \"u\".\"name\", COUNT(p.id) as \"post_count\" FROM \"users\" \"u\" "
             . "LEFT JOIN \"posts\" \"p\" ON u.id = p.user_id "
-            . "WHERE u.status = 'active' "
-            . "GROUP BY u.id, u.name "
+            . "WHERE \"u\".\"status\" = 'active' "
+            . "GROUP BY \"u\".\"id\", \"u\".\"name\" "
             . "HAVING COUNT(p.id) > 5 "
-            . "ORDER BY post_count DESC "
+            . "ORDER BY \"post_count\" DESC "
             . "LIMIT 10";
 
         $this->assertEquals($expected, $sql);
 
         $prepared = $query->sql('postgres', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $expectedPrepared = "SELECT u.id, u.name, COUNT(p.id) as post_count FROM \"users\" \"u\" "
+        $expectedPrepared = "SELECT \"u\".\"id\", \"u\".\"name\", COUNT(p.id) as \"post_count\" FROM \"users\" \"u\" "
             . "LEFT JOIN \"posts\" \"p\" ON u.id = p.user_id "
-            . "WHERE u.status = ? "
-            . "GROUP BY u.id, u.name "
+            . "WHERE \"u\".\"status\" = ? "
+            . "GROUP BY \"u\".\"id\", \"u\".\"name\" "
             . "HAVING COUNT(p.id) > ? "
-            . "ORDER BY post_count DESC "
+            . "ORDER BY \"post_count\" DESC "
             . "LIMIT 10";
         $this->assertEquals($expectedPrepared, $prepared->sql());
         $this->assertEquals(['active', 5], $prepared->bindings());
