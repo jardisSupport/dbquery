@@ -13,6 +13,14 @@ use PHPUnit\Framework\TestCase;
  *
  * Tests: INNER JOIN, LEFT JOIN, RIGHT JOIN, FULL JOIN, CROSS JOIN
  */
+/*
+ * SQL-Pins am 2026-08-10 an das Auto-Quoting einfacher Identifier angepasst:
+ * WHERE/AND/OR-, HAVING-, ORDER-BY-, GROUP-BY-Felder und die SELECT-Feldliste
+ * quoten `ident` bzw. `alias.ident` jetzt dialektgerecht (MySQL/SQLite: Backtick,
+ * PostgreSQL: Double-Quote). Ausdruecke, '*', bereits Gequotetes und
+ * Expression::raw() bleiben byte-identisch roh. Alle Aenderungen in dieser
+ * Datei sind reine Quote-Zeichen-Diffs in erwarteten SQL-Strings.
+ */
 class DbQueryMySqlJoinTest extends TestCase
 {
     public function testInnerJoinWithConstraint(): void
@@ -138,9 +146,9 @@ class DbQueryMySqlJoinTest extends TestCase
         $this->assertStringContainsString('FROM `users` `u`', $result->sql());
         $this->assertStringContainsString('LEFT JOIN (SELECT', $result->sql());
         $this->assertStringContainsString('FROM `orders`', $result->sql());
-        $this->assertStringContainsString('WHERE status = ?', $result->sql());
+        $this->assertStringContainsString('WHERE `status` = ?', $result->sql());
         $this->assertStringContainsString(') `o` ON u.id = o.user_id', $result->sql());
-        $this->assertStringContainsString('WHERE u.active = ?', $result->sql());
+        $this->assertStringContainsString('WHERE `u`.`active` = ?', $result->sql());
 
         // Verify binding order: JOIN subquery bindings first, then main query bindings
         $bindings = $result->bindings();
@@ -169,8 +177,8 @@ class DbQueryMySqlJoinTest extends TestCase
 
         $this->assertIsString($sql);
         $this->assertStringContainsString('FROM `users` `u`', $sql);
-        $this->assertStringContainsString('LEFT JOIN (SELECT user_id, COUNT(*) as cnt FROM `orders` WHERE status = \'paid\'', $sql);
+        $this->assertStringContainsString('LEFT JOIN (SELECT `user_id`, COUNT(*) as `cnt` FROM `orders` WHERE `status` = \'paid\'', $sql);
         $this->assertStringContainsString('`o` ON u.id = o.user_id', $sql);
-        $this->assertStringContainsString('WHERE u.active = 1', $sql);
+        $this->assertStringContainsString('WHERE `u`.`active` = 1', $sql);
     }
 }

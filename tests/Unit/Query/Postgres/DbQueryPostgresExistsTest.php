@@ -15,6 +15,14 @@ use PHPUnit\Framework\TestCase;
  *
  * Tests: EXISTS, NOT EXISTS, complex subqueries with EXISTS
  */
+/*
+ * SQL-Pins am 2026-08-10 an das Auto-Quoting einfacher Identifier angepasst:
+ * WHERE/AND/OR-, HAVING-, ORDER-BY-, GROUP-BY-Felder und die SELECT-Feldliste
+ * quoten `ident` bzw. `alias.ident` jetzt dialektgerecht (MySQL/SQLite: Backtick,
+ * PostgreSQL: Double-Quote). Ausdruecke, '*', bereits Gequotetes und
+ * Expression::raw() bleiben byte-identisch roh. Alle Aenderungen in dieser
+ * Datei sind reine Quote-Zeichen-Diffs in erwarteten SQL-Strings.
+ */
 class DbQueryPostgresExistsTest extends TestCase
 {
     public function testExistsSimple(): void
@@ -31,7 +39,7 @@ class DbQueryPostgresExistsTest extends TestCase
             ->exists($subquery)
             ->sql('postgres', false);
 
-        $expected = "SELECT * FROM \"users\" WHERE EXISTS (SELECT 1 FROM \"posts\" \"p\" WHERE p.user_id = users.id)";
+        $expected = "SELECT * FROM \"users\" WHERE EXISTS (SELECT 1 FROM \"posts\" \"p\" WHERE \"p\".\"user_id\" = users.id)";
 
         $this->assertEquals($expected, $sql);
     }
@@ -50,7 +58,7 @@ class DbQueryPostgresExistsTest extends TestCase
             ->notExists($subquery)
             ->sql('postgres', false);
 
-        $expected = "SELECT * FROM \"users\" WHERE NOT EXISTS (SELECT 1 FROM \"posts\" \"p\" WHERE p.user_id = users.id)";
+        $expected = "SELECT * FROM \"users\" WHERE NOT EXISTS (SELECT 1 FROM \"posts\" \"p\" WHERE \"p\".\"user_id\" = users.id)";
 
         $this->assertEquals($expected, $sql);
     }
@@ -71,25 +79,25 @@ class DbQueryPostgresExistsTest extends TestCase
             ->exists($subquery)
             ->sql('postgres', false);
 
-        $expected = "SELECT u.id, u.name FROM \"users\" \"u\" "
+        $expected = "SELECT \"u\".\"id\", \"u\".\"name\" FROM \"users\" \"u\" "
             . "WHERE EXISTS (SELECT 1 FROM \"orders\" \"o\" "
-            . "WHERE o.user_id = u.id AND o.status = 'completed' AND o.total > 1000)";
+            . "WHERE \"o\".\"user_id\" = u.id AND \"o\".\"status\" = 'completed' AND \"o\".\"total\" > 1000)";
 
         $this->assertEquals($expected, $sql);
 
         $prepared = $query->sql('postgres', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $expectedPrepared = "SELECT u.id, u.name FROM \"users\" \"u\" "
+        $expectedPrepared = "SELECT \"u\".\"id\", \"u\".\"name\" FROM \"users\" \"u\" "
             . "WHERE EXISTS (SELECT 1 FROM \"orders\" \"o\" "
-            . "WHERE o.user_id = u.id AND o.status = ? AND o.total > ?)";
+            . "WHERE \"o\".\"user_id\" = u.id AND \"o\".\"status\" = ? AND \"o\".\"total\" > ?)";
         $this->assertEquals($expectedPrepared, $prepared->sql());
         $this->assertEquals(['completed', 1000], $prepared->bindings());
 
         $prepared = $query->sql('postgres', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $expectedPrepared = "SELECT u.id, u.name FROM \"users\" \"u\" "
+        $expectedPrepared = "SELECT \"u\".\"id\", \"u\".\"name\" FROM \"users\" \"u\" "
             . "WHERE EXISTS (SELECT 1 FROM \"orders\" \"o\" "
-            . "WHERE o.user_id = u.id AND o.status = ? AND o.total > ?)";
+            . "WHERE \"o\".\"user_id\" = u.id AND \"o\".\"status\" = ? AND \"o\".\"total\" > ?)";
         $this->assertEquals($expectedPrepared, $prepared->sql());
         $this->assertEquals(['completed', 1000], $prepared->bindings());
     }
@@ -110,21 +118,21 @@ class DbQueryPostgresExistsTest extends TestCase
             ->sql('postgres', false);
 
         $expected = "SELECT * FROM \"users\" \"u\" "
-            . "WHERE u.active = 1 AND EXISTS (SELECT 1 FROM \"orders\" \"o\" WHERE o.user_id = u.id)";
+            . "WHERE \"u\".\"active\" = 1 AND EXISTS (SELECT 1 FROM \"orders\" \"o\" WHERE \"o\".\"user_id\" = u.id)";
 
         $this->assertEquals($expected, $sql);
 
         $prepared = $query->sql('postgres', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
         $expectedPrepared = "SELECT * FROM \"users\" \"u\" "
-            . "WHERE u.active = ? AND EXISTS (SELECT 1 FROM \"orders\" \"o\" WHERE o.user_id = u.id)";
+            . "WHERE \"u\".\"active\" = ? AND EXISTS (SELECT 1 FROM \"orders\" \"o\" WHERE \"o\".\"user_id\" = u.id)";
         $this->assertEquals($expectedPrepared, $prepared->sql());
         $this->assertEquals([1], $prepared->bindings());
 
         $prepared = $query->sql('postgres', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
         $expectedPrepared = "SELECT * FROM \"users\" \"u\" "
-            . "WHERE u.active = ? AND EXISTS (SELECT 1 FROM \"orders\" \"o\" WHERE o.user_id = u.id)";
+            . "WHERE \"u\".\"active\" = ? AND EXISTS (SELECT 1 FROM \"orders\" \"o\" WHERE \"o\".\"user_id\" = u.id)";
         $this->assertEquals($expectedPrepared, $prepared->sql());
         $this->assertEquals([1], $prepared->bindings());
     }
@@ -145,21 +153,21 @@ class DbQueryPostgresExistsTest extends TestCase
             ->sql('postgres', false);
 
         $expected = "SELECT * FROM \"users\" \"u\" "
-            . "WHERE u.status = 'active' AND NOT EXISTS (SELECT 1 FROM \"bans\" \"b\" WHERE b.user_id = u.id)";
+            . "WHERE \"u\".\"status\" = 'active' AND NOT EXISTS (SELECT 1 FROM \"bans\" \"b\" WHERE \"b\".\"user_id\" = u.id)";
 
         $this->assertEquals($expected, $sql);
 
         $prepared = $query->sql('postgres', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
         $expectedPrepared = "SELECT * FROM \"users\" \"u\" "
-            . "WHERE u.status = ? AND NOT EXISTS (SELECT 1 FROM \"bans\" \"b\" WHERE b.user_id = u.id)";
+            . "WHERE \"u\".\"status\" = ? AND NOT EXISTS (SELECT 1 FROM \"bans\" \"b\" WHERE \"b\".\"user_id\" = u.id)";
         $this->assertEquals($expectedPrepared, $prepared->sql());
         $this->assertEquals(['active'], $prepared->bindings());
 
         $prepared = $query->sql('postgres', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
         $expectedPrepared = "SELECT * FROM \"users\" \"u\" "
-            . "WHERE u.status = ? AND NOT EXISTS (SELECT 1 FROM \"bans\" \"b\" WHERE b.user_id = u.id)";
+            . "WHERE \"u\".\"status\" = ? AND NOT EXISTS (SELECT 1 FROM \"bans\" \"b\" WHERE \"b\".\"user_id\" = u.id)";
         $this->assertEquals($expectedPrepared, $prepared->sql());
         $this->assertEquals(['active'], $prepared->bindings());
     }

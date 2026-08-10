@@ -15,6 +15,14 @@ use PHPUnit\Framework\TestCase;
  *
  * Tests: SELECT subqueries, correlated subqueries, nested subqueries
  */
+/*
+ * SQL-Pins am 2026-08-10 an das Auto-Quoting einfacher Identifier angepasst:
+ * WHERE/AND/OR-, HAVING-, ORDER-BY-, GROUP-BY-Felder und die SELECT-Feldliste
+ * quoten `ident` bzw. `alias.ident` jetzt dialektgerecht (MySQL/SQLite: Backtick,
+ * PostgreSQL: Double-Quote). Ausdruecke, '*', bereits Gequotetes und
+ * Expression::raw() bleiben byte-identisch roh. Alle Aenderungen in dieser
+ * Datei sind reine Quote-Zeichen-Diffs in erwarteten SQL-Strings.
+ */
 class DbQueryPostgresSubqueryTest extends TestCase
 {
     public function testSelectSubquerySingleSimple(): void
@@ -31,12 +39,12 @@ class DbQueryPostgresSubqueryTest extends TestCase
             ->from('users')
             ->sql('postgres', false);
 
-        $expected = "SELECT id, name, (SELECT COUNT(*) FROM \"posts\" WHERE user_id = 1) AS \"post_count\" FROM \"users\"";
+        $expected = "SELECT \"id\", \"name\", (SELECT COUNT(*) FROM \"posts\" WHERE \"user_id\" = 1) AS \"post_count\" FROM \"users\"";
         $this->assertEquals($expected, $sql);
 
         $prepared = $query->sql('postgres', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals("SELECT id, name, (SELECT COUNT(*) FROM \"posts\" WHERE user_id = ?) AS \"post_count\" FROM \"users\"", $prepared->sql());
+        $this->assertEquals("SELECT \"id\", \"name\", (SELECT COUNT(*) FROM \"posts\" WHERE \"user_id\" = ?) AS \"post_count\" FROM \"users\"", $prepared->sql());
         $this->assertEquals([1], $prepared->bindings());
     }
 
@@ -54,7 +62,7 @@ class DbQueryPostgresSubqueryTest extends TestCase
             ->from('users')
             ->sql('postgres', false);
 
-        $expected = "SELECT id, name, (SELECT COUNT(*) FROM \"posts\" \"p\" WHERE p.user_id = users.id) AS \"post_count\" FROM \"users\"";
+        $expected = "SELECT \"id\", \"name\", (SELECT COUNT(*) FROM \"posts\" \"p\" WHERE \"p\".\"user_id\" = users.id) AS \"post_count\" FROM \"users\"";
         $this->assertEquals($expected, $sql);
     }
 
@@ -78,9 +86,9 @@ class DbQueryPostgresSubqueryTest extends TestCase
             ->from('users')
             ->sql('postgres', false);
 
-        $expected = "SELECT id, name, "
-            . "(SELECT COUNT(*) FROM \"posts\" \"p\" WHERE p.user_id = users.id) AS \"post_count\", "
-            . "(SELECT COUNT(*) FROM \"comments\" \"c\" WHERE c.user_id = users.id) AS \"comment_count\" "
+        $expected = "SELECT \"id\", \"name\", "
+            . "(SELECT COUNT(*) FROM \"posts\" \"p\" WHERE \"p\".\"user_id\" = users.id) AS \"post_count\", "
+            . "(SELECT COUNT(*) FROM \"comments\" \"c\" WHERE \"c\".\"user_id\" = users.id) AS \"comment_count\" "
             . "FROM \"users\"";
 
         $this->assertEquals($expected, $sql);
@@ -119,17 +127,17 @@ class DbQueryPostgresSubqueryTest extends TestCase
             ->where('active')->equals(1)
             ->sql('postgres', false);
 
-        $expected = "SELECT id, name, email, "
-            . "(SELECT MAX(p.created_at) FROM \"posts\" \"p\" WHERE p.user_id = users.id AND p.status = 'published') AS \"last_post_date\" "
-            . "FROM \"users\" WHERE active = 1";
+        $expected = "SELECT \"id\", \"name\", \"email\", "
+            . "(SELECT MAX(p.created_at) FROM \"posts\" \"p\" WHERE \"p\".\"user_id\" = users.id AND \"p\".\"status\" = 'published') AS \"last_post_date\" "
+            . "FROM \"users\" WHERE \"active\" = 1";
 
         $this->assertEquals($expected, $sql);
 
         $prepared = $query->sql('postgres', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $expectedPrepared = "SELECT id, name, email, "
-            . "(SELECT MAX(p.created_at) FROM \"posts\" \"p\" WHERE p.user_id = users.id AND p.status = ?) AS \"last_post_date\" "
-            . "FROM \"users\" WHERE active = ?";
+        $expectedPrepared = "SELECT \"id\", \"name\", \"email\", "
+            . "(SELECT MAX(p.created_at) FROM \"posts\" \"p\" WHERE \"p\".\"user_id\" = users.id AND \"p\".\"status\" = ?) AS \"last_post_date\" "
+            . "FROM \"users\" WHERE \"active\" = ?";
         $this->assertEquals($expectedPrepared, $prepared->sql());
         $this->assertEquals(['published', 1], $prepared->bindings());
     }
@@ -149,8 +157,8 @@ class DbQueryPostgresSubqueryTest extends TestCase
             ->from('users')
             ->sql('postgres', false);
 
-        $expected = "SELECT id, name, "
-            . "(SELECT COUNT(DISTINCT c.id) FROM \"posts\" \"p\" INNER JOIN \"comments\" \"c\" ON p.id = c.post_id WHERE p.user_id = users.id) AS \"comment_count\" "
+        $expected = "SELECT \"id\", \"name\", "
+            . "(SELECT COUNT(DISTINCT c.id) FROM \"posts\" \"p\" INNER JOIN \"comments\" \"c\" ON p.id = c.post_id WHERE \"p\".\"user_id\" = users.id) AS \"comment_count\" "
             . "FROM \"users\"";
 
         $this->assertEquals($expected, $sql);
@@ -171,8 +179,8 @@ class DbQueryPostgresSubqueryTest extends TestCase
             ->innerJoin('profiles', 'u.id = prof.user_id', 'prof')
             ->sql('postgres', false);
 
-        $expected = "SELECT u.id, u.name, "
-            . "(SELECT COUNT(*) FROM \"posts\" \"p\" WHERE p.user_id = u.id) AS \"post_count\" "
+        $expected = "SELECT \"u\".\"id\", \"u\".\"name\", "
+            . "(SELECT COUNT(*) FROM \"posts\" \"p\" WHERE \"p\".\"user_id\" = u.id) AS \"post_count\" "
             . "FROM \"users\" \"u\" INNER JOIN \"profiles\" \"prof\" ON u.id = prof.user_id";
 
         $this->assertEquals($expected, $sql);
@@ -194,9 +202,9 @@ class DbQueryPostgresSubqueryTest extends TestCase
             ->limit(10)
             ->sql('postgres', false);
 
-        $expected = "SELECT id, name, "
-            . "(SELECT COUNT(*) FROM \"posts\" \"p\" WHERE p.user_id = users.id) AS \"post_count\" "
-            . "FROM \"users\" ORDER BY name ASC LIMIT 10";
+        $expected = "SELECT \"id\", \"name\", "
+            . "(SELECT COUNT(*) FROM \"posts\" \"p\" WHERE \"p\".\"user_id\" = users.id) AS \"post_count\" "
+            . "FROM \"users\" ORDER BY \"name\" ASC LIMIT 10";
 
         $this->assertEquals($expected, $sql);
     }
@@ -217,17 +225,17 @@ class DbQueryPostgresSubqueryTest extends TestCase
             ->having('COUNT(*)')->greater(5)
             ->sql('postgres', false);
 
-        $expected = "SELECT c.id, c.name, COUNT(*) as total, "
-            . "(SELECT AVG(p.rating) FROM \"posts\" \"p\" WHERE p.category_id = c.id) AS \"avg_rating\" "
-            . "FROM \"categories\" \"c\" GROUP BY c.id, c.name HAVING COUNT(*) > 5";
+        $expected = "SELECT \"c\".\"id\", \"c\".\"name\", COUNT(*) as \"total\", "
+            . "(SELECT AVG(p.rating) FROM \"posts\" \"p\" WHERE \"p\".\"category_id\" = c.id) AS \"avg_rating\" "
+            . "FROM \"categories\" \"c\" GROUP BY \"c\".\"id\", \"c\".\"name\" HAVING COUNT(*) > 5";
 
         $this->assertEquals($expected, $sql);
 
         $prepared = $query->sql('postgres', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $expectedPrepared = "SELECT c.id, c.name, COUNT(*) as total, "
-            . "(SELECT AVG(p.rating) FROM \"posts\" \"p\" WHERE p.category_id = c.id) AS \"avg_rating\" "
-            . "FROM \"categories\" \"c\" GROUP BY c.id, c.name HAVING COUNT(*) > ?";
+        $expectedPrepared = "SELECT \"c\".\"id\", \"c\".\"name\", COUNT(*) as \"total\", "
+            . "(SELECT AVG(p.rating) FROM \"posts\" \"p\" WHERE \"p\".\"category_id\" = c.id) AS \"avg_rating\" "
+            . "FROM \"categories\" \"c\" GROUP BY \"c\".\"id\", \"c\".\"name\" HAVING COUNT(*) > ?";
         $this->assertEquals($expectedPrepared, $prepared->sql());
         $this->assertEquals([5], $prepared->bindings());
     }
@@ -265,7 +273,7 @@ class DbQueryPostgresSubqueryTest extends TestCase
             ->from('users')
             ->sql('postgres', false);
 
-        $this->assertStringContainsString('SELECT id, name,', $sql);
+        $this->assertStringContainsString('SELECT "id", "name",', $sql);
         $this->assertStringContainsString('SELECT COUNT(*)', $sql);
         $this->assertStringContainsString('SELECT MAX(created_at)', $sql);
         $this->assertStringContainsString('AS "post_info"', $sql);
@@ -290,9 +298,9 @@ class DbQueryPostgresSubqueryTest extends TestCase
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $result);
         $this->assertStringContainsString('FROM (SELECT', $result->sql());
         $this->assertStringContainsString('FROM "users"', $result->sql());
-        $this->assertStringContainsString('WHERE status = ?', $result->sql());
+        $this->assertStringContainsString('WHERE "status" = ?', $result->sql());
         $this->assertStringContainsString(') "sub"', $result->sql());
-        $this->assertStringContainsString('WHERE sub.id > ?', $result->sql());
+        $this->assertStringContainsString('WHERE "sub"."id" > ?', $result->sql());
 
         // Verify binding order: FROM subquery bindings first, then main query bindings
         $bindings = $result->bindings();
@@ -318,8 +326,8 @@ class DbQueryPostgresSubqueryTest extends TestCase
         $sql = $query->sql('postgres', false);
 
         $this->assertIsString($sql);
-        $this->assertStringContainsString('FROM (SELECT id, name FROM "users" WHERE status = \'active\')', $sql);
+        $this->assertStringContainsString('FROM (SELECT "id", "name" FROM "users" WHERE "status" = \'active\')', $sql);
         $this->assertStringContainsString('"sub"', $sql);
-        $this->assertStringContainsString('WHERE sub.id > 5', $sql);
+        $this->assertStringContainsString('WHERE "sub"."id" > 5', $sql);
     }
 }

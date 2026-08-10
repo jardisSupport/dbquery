@@ -305,7 +305,9 @@ class DbQuery implements DbQueryBuilderInterface
 
     public function having(string $expression, ?string $openBracket = null): DbQueryConditionBuilderInterface
     {
-        $this->queryCondition->initCondition($openBracket ?? '', $expression, true);
+        $resolvedExpression = $this->registry->get(Method\ResolveField::class)($expression);
+
+        $this->queryCondition->initCondition($openBracket ?? '', $resolvedExpression, true);
 
         return $this->queryCondition;
     }

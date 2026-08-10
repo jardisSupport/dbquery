@@ -128,6 +128,7 @@ class SqlBuilder
             $this->dialect,
             $prepared,
             fn(string $id) => $this->quoteIdentifier($id),
+            fn(string $fields) => $this->quoteSelectFieldList($fields),
             $this->bindings
         );
     }
@@ -184,7 +185,10 @@ class SqlBuilder
         /** @var GroupByBuilder $builder */
         $builder = $this->registry->get(GroupByBuilder::class);
 
-        return $builder($this->state);
+        return $builder(
+            $this->state,
+            fn(string $id) => $this->quoteIfSimpleIdentifier($id)
+        );
     }
 
     /**
@@ -221,6 +225,7 @@ class SqlBuilder
             $prepared,
             fn(string $cond) => $this->processJsonPlaceholders($cond),
             fn(string $cond) => $this->replaceSubqueryPlaceholders($cond),
+            fn(string $cond) => $this->quoteMarkedIdentifiers($cond),
             $this->bindings
         );
     }
@@ -231,7 +236,10 @@ class SqlBuilder
         /** @var OrderByBuilder $builder */
         $builder = $this->registry->get(OrderByBuilder::class);
 
-        return $builder($this->state);
+        return $builder(
+            $this->state,
+            fn(string $id) => $this->quoteIfSimpleIdentifier($id)
+        );
     }
 
     protected function buildLimitOffset(): string
@@ -276,6 +284,50 @@ class SqlBuilder
     public function quoteIdentifier(string $identifier): string
     {
         return '`' . str_replace('`', '``', $identifier) . '`';
+    }
+
+    /**
+     * Quote a candidate string when it is a simple identifier
+     * (`ident` or `alias.ident`), otherwise return it unchanged
+     *
+     * @param string $identifier The candidate string
+     * @return string The quoted identifier or the unchanged input
+     */
+    protected function quoteIfSimpleIdentifier(string $identifier): string
+    {
+        /** @var Formatter\SimpleIdentifierQuoter $quoter */
+        $quoter = $this->registry->get(Formatter\SimpleIdentifierQuoter::class);
+
+        return $quoter($identifier, fn(string $part) => $this->quoteIdentifier($part));
+    }
+
+    /**
+     * Replace identifier markers in a condition string with
+     * dialect-quoted identifiers
+     *
+     * @param string $condition The condition string possibly containing markers
+     * @return string The condition string with all markers replaced
+     */
+    protected function quoteMarkedIdentifiers(string $condition): string
+    {
+        /** @var Formatter\IdentifierMarkerReplacer $replacer */
+        $replacer = $this->registry->get(Formatter\IdentifierMarkerReplacer::class);
+
+        return $replacer($condition, fn(string $id) => $this->quoteIfSimpleIdentifier($id));
+    }
+
+    /**
+     * Quote simple identifiers in the SELECT field list
+     *
+     * @param string $fields The raw field list
+     * @return string The field list with simple identifiers quoted
+     */
+    protected function quoteSelectFieldList(string $fields): string
+    {
+        /** @var Formatter\FieldListIdentifierQuoter $quoter */
+        $quoter = $this->registry->get(Formatter\FieldListIdentifierQuoter::class);
+
+        return $quoter($fields, fn(string $id) => $this->quoteIfSimpleIdentifier($id));
     }
 
     /**

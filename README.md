@@ -16,6 +16,7 @@ A fluent SQL query builder for PHP that generates dialect-aware SQL for MySQL, M
 ## Features
 
 - **Dialect-Aware SQL** — generates correct syntax for MySQL, MariaDB, PostgreSQL, and SQLite from a single builder
+- **Identifier Auto-Quoting** — simple identifiers (`ident`, `alias.ident`) in WHERE/HAVING/ORDER BY/GROUP BY/SELECT are quoted per dialect; expressions stay raw (see [Identifier Auto-Quoting](#identifier-auto-quoting))
 - **CTEs** — `with()` and `withRecursive()` for common table expressions
 - **Window Functions** — `selectWindow()`, `window()`, and `selectWindowRef()` for analytics queries
 - **Subqueries** — subqueries in FROM, JOIN constraints, SELECT columns, and WHERE EXISTS / NOT EXISTS
@@ -48,9 +49,51 @@ $query = (new DbQuery())
 
 // Generate prepared SQL for MySQL
 $prepared = $query->sql('mysql', prepared: true);
-// $prepared->sql()      → "SELECT id, name, email FROM users WHERE status = ? AND created_at >= ? ORDER BY name ASC LIMIT 50"
+// $prepared->sql()      → "SELECT `id`, `name`, `email` FROM `users` WHERE `status` = ? AND `created_at` >= ? ORDER BY `name` ASC LIMIT 50"
 // $prepared->bindings() → ['active', '2024-01-01']
 ```
+
+## Identifier Auto-Quoting
+
+Simple identifiers are quoted automatically with the dialect's identifier quoting —
+MySQL/MariaDB/SQLite use backticks, PostgreSQL uses double quotes. This makes
+case-sensitive column names (e.g. `createdAt` from quoted DDL) work on PostgreSQL,
+which folds unquoted identifiers to lowercase (error 42703 before).
+
+**What is quoted** — a string is a *simple identifier* iff it matches
+`^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)?$` (`ident` or `alias.ident`).
+Simple identifiers are quoted in these positions:
+
+- `where()` / `and()` / `or()` condition fields
+- `having()` fields
+- `orderBy()` fields
+- `groupBy()` columns
+- the `select()` field list (per comma-separated item; for `expr AS alias` the
+  `expr` and the `alias` are each quoted when they are simple identifiers)
+
+**What stays raw (byte-identical)** — everything that is not a simple identifier:
+
+- SQL literals and niladic functions that would otherwise match the pattern
+  (case-insensitive): `NULL`, `TRUE`, `FALSE`, `DEFAULT`, `CURRENT_TIMESTAMP`,
+  `CURRENT_DATE`, `CURRENT_TIME`, `LOCALTIME`, `LOCALTIMESTAMP`,
+  `CURRENT_USER`, `SESSION_USER` — so UNION padding like
+  `select('id, NULL AS email')` keeps `NULL` raw. A column literally named
+  `null` must be passed pre-quoted (`` `null` ``/`"null"`) or via
+  `Expression::raw('"null"')`; qualified names (`t.null`) are always
+  treated as identifiers.
+- expressions and functions (`YEAR(created)`, `price * 1.19`, `COUNT(*)`)
+- `*` and `alias.*`
+- already quoted strings (`` `createdAt` ``, `"createdAt"`)
+- `Expression::raw(...)` — the explicit escape hatch: even a simple identifier
+  inside `Expression::raw()` is never quoted
+- JOIN ON constraints, window specifications (`partitionBy()`, `windowOrderBy()`)
+  and CTE inner SQL other than what the inner builder itself quotes
+
+**Boundary** — quoting makes the written identifier case-significant on PostgreSQL.
+The name you pass must match the DDL exactly when the DDL was quoted, or be
+all-lowercase when the DDL was unquoted. Declare aliases with an explicit `AS`
+(`COUNT(*) AS orderCount`) so alias definition and alias references are quoted
+consistently; use `Expression::raw()` where the raw string is required.
 
 ## Advanced Usage
 

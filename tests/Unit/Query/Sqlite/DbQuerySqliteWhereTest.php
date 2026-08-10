@@ -14,6 +14,14 @@ use PHPUnit\Framework\TestCase;
  *
  * Tests: WHERE conditions, operators, AND, OR, brackets
  */
+/*
+ * SQL-Pins am 2026-08-10 an das Auto-Quoting einfacher Identifier angepasst:
+ * WHERE/AND/OR-, HAVING-, ORDER-BY-, GROUP-BY-Felder und die SELECT-Feldliste
+ * quoten `ident` bzw. `alias.ident` jetzt dialektgerecht (MySQL/SQLite: Backtick,
+ * PostgreSQL: Double-Quote). Ausdruecke, '*', bereits Gequotetes und
+ * Expression::raw() bleiben byte-identisch roh. Alle Aenderungen in dieser
+ * Datei sind reine Quote-Zeichen-Diffs in erwarteten SQL-Strings.
+ */
 class DbQuerySqliteWhereTest extends TestCase
 {
     public function testWhereEquals(): void
@@ -25,16 +33,16 @@ class DbQuerySqliteWhereTest extends TestCase
             ->where('id')->equals(123)
             ->sql('sqlite', false);
 
-        $this->assertEquals('SELECT * FROM `users` WHERE id = 123', $sql);
+        $this->assertEquals('SELECT * FROM `users` WHERE `id` = 123', $sql);
 
         $prepared = $query->sql('sqlite', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM `users` WHERE id = ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM `users` WHERE `id` = ?', $prepared->sql());
         $this->assertEquals([123], $prepared->bindings());
 
         $prepared = $query->sql('sqlite', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM `users` WHERE id = ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM `users` WHERE `id` = ?', $prepared->sql());
         $this->assertEquals([123], $prepared->bindings());
     }
 
@@ -47,16 +55,16 @@ class DbQuerySqliteWhereTest extends TestCase
             ->where('name')->equals('John')
             ->sql('sqlite', false);
 
-        $this->assertEquals("SELECT * FROM `users` WHERE name = 'John'", $sql);
+        $this->assertEquals("SELECT * FROM `users` WHERE `name` = 'John'", $sql);
 
         $prepared = $query->sql('sqlite', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM `users` WHERE name = ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM `users` WHERE `name` = ?', $prepared->sql());
         $this->assertEquals(['John'], $prepared->bindings());
 
         $prepared = $query->sql('sqlite', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM `users` WHERE name = ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM `users` WHERE `name` = ?', $prepared->sql());
         $this->assertEquals(['John'], $prepared->bindings());
     }
 
@@ -69,16 +77,16 @@ class DbQuerySqliteWhereTest extends TestCase
             ->where('age')->greater(18)
             ->sql('sqlite', false);
 
-        $this->assertEquals('SELECT * FROM `users` WHERE age > 18', $sql);
+        $this->assertEquals('SELECT * FROM `users` WHERE `age` > 18', $sql);
 
         $prepared = $query->sql('sqlite', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM `users` WHERE age > ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM `users` WHERE `age` > ?', $prepared->sql());
         $this->assertEquals([18], $prepared->bindings());
 
         $prepared = $query->sql('sqlite', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM `users` WHERE age > ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM `users` WHERE `age` > ?', $prepared->sql());
         $this->assertEquals([18], $prepared->bindings());
     }
 
@@ -91,16 +99,16 @@ class DbQuerySqliteWhereTest extends TestCase
             ->where('age')->lower(65)
             ->sql('sqlite', false);
 
-        $this->assertEquals('SELECT * FROM `users` WHERE age < 65', $sql);
+        $this->assertEquals('SELECT * FROM `users` WHERE `age` < 65', $sql);
 
         $prepared = $query->sql('sqlite', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM `users` WHERE age < ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM `users` WHERE `age` < ?', $prepared->sql());
         $this->assertEquals([65], $prepared->bindings());
 
         $prepared = $query->sql('sqlite', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM `users` WHERE age < ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM `users` WHERE `age` < ?', $prepared->sql());
         $this->assertEquals([65], $prepared->bindings());
     }
 
@@ -113,16 +121,16 @@ class DbQuerySqliteWhereTest extends TestCase
             ->where('age')->greaterEquals(18)
             ->sql('sqlite', false);
 
-        $this->assertEquals('SELECT * FROM `users` WHERE age >= 18', $sql);
+        $this->assertEquals('SELECT * FROM `users` WHERE `age` >= 18', $sql);
 
         $prepared = $query->sql('sqlite', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM `users` WHERE age >= ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM `users` WHERE `age` >= ?', $prepared->sql());
         $this->assertEquals([18], $prepared->bindings());
 
         $prepared = $query->sql('sqlite', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM `users` WHERE age >= ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM `users` WHERE `age` >= ?', $prepared->sql());
         $this->assertEquals([18], $prepared->bindings());
     }
 
@@ -135,16 +143,16 @@ class DbQuerySqliteWhereTest extends TestCase
             ->where('age')->lowerEquals(65)
             ->sql('sqlite', false);
 
-        $this->assertEquals('SELECT * FROM `users` WHERE age <= 65', $sql);
+        $this->assertEquals('SELECT * FROM `users` WHERE `age` <= 65', $sql);
 
         $prepared = $query->sql('sqlite', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM `users` WHERE age <= ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM `users` WHERE `age` <= ?', $prepared->sql());
         $this->assertEquals([65], $prepared->bindings());
 
         $prepared = $query->sql('sqlite', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM `users` WHERE age <= ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM `users` WHERE `age` <= ?', $prepared->sql());
         $this->assertEquals([65], $prepared->bindings());
     }
 
@@ -157,16 +165,16 @@ class DbQuerySqliteWhereTest extends TestCase
             ->where('age')->between(18, 65)
             ->sql('sqlite', false);
 
-        $this->assertEquals('SELECT * FROM `users` WHERE age BETWEEN 18 AND 65', $sql);
+        $this->assertEquals('SELECT * FROM `users` WHERE `age` BETWEEN 18 AND 65', $sql);
 
         $prepared = $query->sql('sqlite', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM `users` WHERE age BETWEEN ? AND ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM `users` WHERE `age` BETWEEN ? AND ?', $prepared->sql());
         $this->assertEquals([18, 65], $prepared->bindings());
 
         $prepared = $query->sql('sqlite', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM `users` WHERE age BETWEEN ? AND ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM `users` WHERE `age` BETWEEN ? AND ?', $prepared->sql());
         $this->assertEquals([18, 65], $prepared->bindings());
     }
 
@@ -179,16 +187,16 @@ class DbQuerySqliteWhereTest extends TestCase
             ->where('status')->in(['active', 'pending'])
             ->sql('sqlite', false);
 
-        $this->assertEquals("SELECT * FROM `users` WHERE status IN ('active', 'pending')", $sql);
+        $this->assertEquals("SELECT * FROM `users` WHERE `status` IN ('active', 'pending')", $sql);
 
         $prepared = $query->sql('sqlite', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM `users` WHERE status IN (?, ?)', $prepared->sql());
+        $this->assertEquals('SELECT * FROM `users` WHERE `status` IN (?, ?)', $prepared->sql());
         $this->assertEquals(['active', 'pending'], $prepared->bindings());
 
         $prepared = $query->sql('sqlite', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM `users` WHERE status IN (?, ?)', $prepared->sql());
+        $this->assertEquals('SELECT * FROM `users` WHERE `status` IN (?, ?)', $prepared->sql());
         $this->assertEquals(['active', 'pending'], $prepared->bindings());
     }
 
@@ -236,10 +244,10 @@ class DbQuerySqliteWhereTest extends TestCase
             ->and('id')->in([])
             ->sql('sqlite', false);
 
-        $this->assertEquals("SELECT * FROM `users` WHERE status = 'active' AND 1=0", $sql);
+        $this->assertEquals("SELECT * FROM `users` WHERE `status` = 'active' AND 1=0", $sql);
 
         $prepared = $query->sql('sqlite', true);
-        $this->assertEquals('SELECT * FROM `users` WHERE status = ? AND 1=0', $prepared->sql());
+        $this->assertEquals('SELECT * FROM `users` WHERE `status` = ? AND 1=0', $prepared->sql());
         $this->assertEquals(['active'], $prepared->bindings());
     }
 
@@ -253,7 +261,7 @@ class DbQuerySqliteWhereTest extends TestCase
             ->or('id')->in([])
             ->sql('sqlite', false);
 
-        $this->assertEquals("SELECT * FROM `users` WHERE status = 'active' OR 1=0", $sql);
+        $this->assertEquals("SELECT * FROM `users` WHERE `status` = 'active' OR 1=0", $sql);
     }
 
     public function testWhereInEmptyArrayWithBrackets(): void
@@ -266,7 +274,7 @@ class DbQuerySqliteWhereTest extends TestCase
             ->and('(id')->in([], ')')
             ->sql('sqlite', false);
 
-        $this->assertEquals("SELECT * FROM `users` WHERE status = 'active' AND (1=0)", $sql);
+        $this->assertEquals("SELECT * FROM `users` WHERE `status` = 'active' AND (1=0)", $sql);
     }
 
     public function testWhereNotInEmptyArrayWithOtherConditions(): void
@@ -279,7 +287,7 @@ class DbQuerySqliteWhereTest extends TestCase
             ->and('id')->notIn([])
             ->sql('sqlite', false);
 
-        $this->assertEquals("SELECT * FROM `users` WHERE status = 'active' AND 1=1", $sql);
+        $this->assertEquals("SELECT * FROM `users` WHERE `status` = 'active' AND 1=1", $sql);
     }
 
     public function testWhereLike(): void
@@ -291,16 +299,16 @@ class DbQuerySqliteWhereTest extends TestCase
             ->where('name')->like('%John%')
             ->sql('sqlite', false);
 
-        $this->assertEquals("SELECT * FROM `users` WHERE name LIKE '%John%'", $sql);
+        $this->assertEquals("SELECT * FROM `users` WHERE `name` LIKE '%John%'", $sql);
 
         $prepared = $query->sql('sqlite', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM `users` WHERE name LIKE ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM `users` WHERE `name` LIKE ?', $prepared->sql());
         $this->assertEquals(['%John%'], $prepared->bindings());
 
         $prepared = $query->sql('sqlite', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM `users` WHERE name LIKE ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM `users` WHERE `name` LIKE ?', $prepared->sql());
         $this->assertEquals(['%John%'], $prepared->bindings());
     }
 
@@ -313,7 +321,7 @@ class DbQuerySqliteWhereTest extends TestCase
             ->where('deleted_at')->isNull()
             ->sql('sqlite', false);
 
-        $this->assertEquals('SELECT * FROM `users` WHERE deleted_at IS NULL', $sql);
+        $this->assertEquals('SELECT * FROM `users` WHERE `deleted_at` IS NULL', $sql);
     }
 
     public function testWhereIsNotNull(): void
@@ -325,7 +333,7 @@ class DbQuerySqliteWhereTest extends TestCase
             ->where('email')->isNotNull()
             ->sql('sqlite', false);
 
-        $this->assertEquals('SELECT * FROM `users` WHERE email IS NOT NULL', $sql);
+        $this->assertEquals('SELECT * FROM `users` WHERE `email` IS NOT NULL', $sql);
     }
 
     public function testMultipleWhereWithAnd(): void
@@ -338,16 +346,16 @@ class DbQuerySqliteWhereTest extends TestCase
             ->and('status')->equals('active')
             ->sql('sqlite', false);
 
-        $this->assertEquals("SELECT * FROM `users` WHERE age > 18 AND status = 'active'", $sql);
+        $this->assertEquals("SELECT * FROM `users` WHERE `age` > 18 AND `status` = 'active'", $sql);
 
         $prepared = $query->sql('sqlite', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM `users` WHERE age > ? AND status = ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM `users` WHERE `age` > ? AND `status` = ?', $prepared->sql());
         $this->assertEquals([18, 'active'], $prepared->bindings());
 
         $prepared = $query->sql('sqlite', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM `users` WHERE age > ? AND status = ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM `users` WHERE `age` > ? AND `status` = ?', $prepared->sql());
         $this->assertEquals([18, 'active'], $prepared->bindings());
     }
 
@@ -361,16 +369,16 @@ class DbQuerySqliteWhereTest extends TestCase
             ->or('age')->greater(65)
             ->sql('sqlite', false);
 
-        $this->assertEquals('SELECT * FROM `users` WHERE age < 18 OR age > 65', $sql);
+        $this->assertEquals('SELECT * FROM `users` WHERE `age` < 18 OR `age` > 65', $sql);
 
         $prepared = $query->sql('sqlite', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM `users` WHERE age < ? OR age > ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM `users` WHERE `age` < ? OR `age` > ?', $prepared->sql());
         $this->assertEquals([18, 65], $prepared->bindings());
 
         $prepared = $query->sql('sqlite', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM `users` WHERE age < ? OR age > ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM `users` WHERE `age` < ? OR `age` > ?', $prepared->sql());
         $this->assertEquals([18, 65], $prepared->bindings());
     }
 
@@ -384,16 +392,16 @@ class DbQuerySqliteWhereTest extends TestCase
             ->and('age')->lower(65, ')')
             ->sql('sqlite', false);
 
-        $this->assertEquals('SELECT * FROM `users` WHERE (age > 18 AND age < 65)', $sql);
+        $this->assertEquals('SELECT * FROM `users` WHERE (age > 18 AND `age` < 65)', $sql);
 
         $prepared = $query->sql('sqlite', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM `users` WHERE (age > ? AND age < ?)', $prepared->sql());
+        $this->assertEquals('SELECT * FROM `users` WHERE (age > ? AND `age` < ?)', $prepared->sql());
         $this->assertEquals([18, 65], $prepared->bindings());
 
         $prepared = $query->sql('sqlite', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM `users` WHERE (age > ? AND age < ?)', $prepared->sql());
+        $this->assertEquals('SELECT * FROM `users` WHERE (age > ? AND `age` < ?)', $prepared->sql());
         $this->assertEquals([18, 65], $prepared->bindings());
     }
 
@@ -408,16 +416,16 @@ class DbQuerySqliteWhereTest extends TestCase
             ->or('role')->equals('admin')
             ->sql('sqlite', false);
 
-        $this->assertEquals("SELECT * FROM `users` WHERE (status = 'active' AND age > 18) OR role = 'admin'", $sql);
+        $this->assertEquals("SELECT * FROM `users` WHERE (status = 'active' AND `age` > 18) OR `role` = 'admin'", $sql);
 
         $prepared = $query->sql('sqlite', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM `users` WHERE (status = ? AND age > ?) OR role = ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM `users` WHERE (status = ? AND `age` > ?) OR `role` = ?', $prepared->sql());
         $this->assertEquals(['active', 18, 'admin'], $prepared->bindings());
 
         $prepared = $query->sql('sqlite', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM `users` WHERE (status = ? AND age > ?) OR role = ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM `users` WHERE (status = ? AND `age` > ?) OR `role` = ?', $prepared->sql());
         $this->assertEquals(['active', 18, 'admin'], $prepared->bindings());
     }
 
@@ -439,7 +447,7 @@ class DbQuerySqliteWhereTest extends TestCase
 
         $this->assertIsString($sql);
         $this->assertStringContainsString('SELECT * FROM `users`', $sql);
-        $this->assertStringContainsString('WHERE id IN (SELECT user_id FROM `orders` WHERE status = \'completed\')', $sql);
+        $this->assertStringContainsString('WHERE `id` IN (SELECT `user_id` FROM `orders` WHERE `status` = \'completed\')', $sql);
     }
 
     public function testWhereJsonExtract(): void
@@ -465,7 +473,7 @@ class DbQuerySqliteWhereTest extends TestCase
 
         $sql = $query->sql('sqlite', false);
 
-        $this->assertStringContainsString('WHERE active = 1', $sql);
+        $this->assertStringContainsString('WHERE `active` = 1', $sql);
         $this->assertStringContainsString('AND json_extract(`settings`, \'$.theme\') = \'dark\'', $sql);
     }
 
@@ -479,7 +487,7 @@ class DbQuerySqliteWhereTest extends TestCase
 
         $sql = $query->sql('sqlite', false);
 
-        $this->assertStringContainsString('WHERE status = \'active\'', $sql);
+        $this->assertStringContainsString('WHERE `status` = \'active\'', $sql);
         $this->assertStringContainsString('OR json_extract(`preferences`, \'$.notifications\') = 1', $sql);
     }
 
@@ -493,7 +501,7 @@ class DbQuerySqliteWhereTest extends TestCase
 
         $sql = $query->sql('sqlite', false);
 
-        $this->assertStringContainsString('GROUP BY user_id', $sql);
+        $this->assertStringContainsString('GROUP BY `user_id`', $sql);
         $this->assertStringContainsString('HAVING json_extract(`metadata`, \'$.priority\') = \'high\'', $sql);
     }
 
@@ -539,14 +547,14 @@ class DbQuerySqliteWhereTest extends TestCase
             ->sql('sqlite', false);
 
         $this->assertEquals(
-            'SELECT * FROM `users` WHERE status = \'active\' AND strftime("%Y", created_at) = \'2024\'',
+            'SELECT * FROM `users` WHERE `status` = \'active\' AND strftime("%Y", created_at) = \'2024\'',
             $sql
         );
 
         $prepared = $query->sql('sqlite', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
         $this->assertEquals(
-            'SELECT * FROM `users` WHERE status = ? AND strftime("%Y", created_at) = ?',
+            'SELECT * FROM `users` WHERE `status` = ? AND strftime("%Y", created_at) = ?',
             $prepared->sql()
         );
         $this->assertEquals(['active', '2024'], $prepared->bindings());
@@ -563,13 +571,13 @@ class DbQuerySqliteWhereTest extends TestCase
             ->sql('sqlite', false);
 
         $this->assertEquals(
-            "SELECT * FROM `users` WHERE name LIKE '%John%' OR LOWER(email) LIKE '%john%'",
+            "SELECT * FROM `users` WHERE `name` LIKE '%John%' OR LOWER(email) LIKE '%john%'",
             $sql
         );
 
         $prepared = $query->sql('sqlite', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
-        $this->assertEquals('SELECT * FROM `users` WHERE name LIKE ? OR LOWER(email) LIKE ?', $prepared->sql());
+        $this->assertEquals('SELECT * FROM `users` WHERE `name` LIKE ? OR LOWER(email) LIKE ?', $prepared->sql());
         $this->assertEquals(['%John%', '%john%'], $prepared->bindings());
     }
 
@@ -636,14 +644,14 @@ class DbQuerySqliteWhereTest extends TestCase
             ->sql('sqlite', false);
 
         $this->assertEquals(
-            'SELECT * FROM `products` WHERE (stock_level > 0 AND price * 0.8 < 100) OR featured = 1',
+            'SELECT * FROM `products` WHERE (stock_level > 0 AND price * 0.8 < 100) OR `featured` = 1',
             $sql
         );
 
         $prepared = $query->sql('sqlite', true);
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
         $this->assertEquals(
-            'SELECT * FROM `products` WHERE (stock_level > ? AND price * 0.8 < ?) OR featured = ?',
+            'SELECT * FROM `products` WHERE (stock_level > ? AND price * 0.8 < ?) OR `featured` = ?',
             $prepared->sql()
         );
         $this->assertEquals([0, 100, 1], $prepared->bindings());

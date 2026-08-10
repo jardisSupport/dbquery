@@ -13,7 +13,9 @@ use JardisSupport\DbQuery\Query\Builder\Clause\JoinBuilder;
 use JardisSupport\DbQuery\Query\Builder\Clause\LimitBuilder;
 use JardisSupport\DbQuery\Query\Builder\Clause\OrderByBuilder;
 use JardisSupport\DbQuery\Factory\BuilderRegistry;
+use JardisSupport\DbQuery\Query\Formatter\IdentifierMarkerReplacer;
 use JardisSupport\DbQuery\Query\Formatter\PlaceholderReplacer;
+use JardisSupport\DbQuery\Query\Formatter\SimpleIdentifierQuoter;
 use JardisSupport\DbQuery\Query\Formatter\ValueFormatter;
 use JardisSupport\DbQuery\Query\Processor\JsonPlaceholderProcessor;
 use JardisSupport\DbQuery\Query\Validator\SqlInjectionValidator;
@@ -216,6 +218,7 @@ abstract class UpdateSqlBuilder
             $prepared,
             fn(string $cond) => $this->processJsonPlaceholders($cond),
             fn(string $cond) => $this->replaceSubqueryPlaceholders($cond),
+            fn(string $cond) => $this->quoteMarkedIdentifiers($cond),
             $this->bindings
         );
     }
@@ -234,7 +237,40 @@ abstract class UpdateSqlBuilder
         /** @var OrderByBuilder $builder */
         $builder = $this->registry->get(OrderByBuilder::class);
 
-        return $builder($this->state);
+        return $builder(
+            $this->state,
+            fn(string $id) => $this->quoteIfSimpleIdentifier($id)
+        );
+    }
+
+    /**
+     * Quote a candidate string when it is a simple identifier
+     * (`ident` or `alias.ident`), otherwise return it unchanged
+     *
+     * @param string $identifier The candidate string
+     * @return string The quoted identifier or the unchanged input
+     */
+    protected function quoteIfSimpleIdentifier(string $identifier): string
+    {
+        /** @var SimpleIdentifierQuoter $quoter */
+        $quoter = $this->registry->get(SimpleIdentifierQuoter::class);
+
+        return $quoter($identifier, fn(string $part) => $this->quoteIdentifier($part));
+    }
+
+    /**
+     * Replace identifier markers in a condition string with
+     * dialect-quoted identifiers
+     *
+     * @param string $condition The condition string possibly containing markers
+     * @return string The condition string with all markers replaced
+     */
+    protected function quoteMarkedIdentifiers(string $condition): string
+    {
+        /** @var IdentifierMarkerReplacer $replacer */
+        $replacer = $this->registry->get(IdentifierMarkerReplacer::class);
+
+        return $replacer($condition, fn(string $id) => $this->quoteIfSimpleIdentifier($id));
     }
 
     /**

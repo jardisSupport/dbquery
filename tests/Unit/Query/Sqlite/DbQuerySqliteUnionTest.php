@@ -14,6 +14,14 @@ use PHPUnit\Framework\TestCase;
  *
  * Tests: UNION, UNION ALL
  */
+/*
+ * SQL-Pins am 2026-08-10 an das Auto-Quoting einfacher Identifier angepasst:
+ * WHERE/AND/OR-, HAVING-, ORDER-BY-, GROUP-BY-Felder und die SELECT-Feldliste
+ * quoten `ident` bzw. `alias.ident` jetzt dialektgerecht (MySQL/SQLite: Backtick,
+ * PostgreSQL: Double-Quote). Ausdruecke, '*', bereits Gequotetes und
+ * Expression::raw() bleiben byte-identisch roh. Alle Aenderungen in dieser
+ * Datei sind reine Quote-Zeichen-Diffs in erwarteten SQL-Strings.
+ */
 class DbQuerySqliteUnionTest extends TestCase
 {
     public function testUnionSimple(): void
@@ -31,8 +39,8 @@ class DbQuerySqliteUnionTest extends TestCase
             ->union($secondQuery)
             ->sql('sqlite', false);
 
-        $expected = "SELECT id, name FROM `customers` WHERE country = 'Germany' "
-            . "UNION SELECT id, name FROM `suppliers` WHERE country = 'Germany'";
+        $expected = "SELECT `id`, `name` FROM `customers` WHERE `country` = 'Germany' "
+            . "UNION SELECT `id`, `name` FROM `suppliers` WHERE `country` = 'Germany'";
 
         $this->assertEquals($expected, $sql);
     }
@@ -50,7 +58,7 @@ class DbQuerySqliteUnionTest extends TestCase
             ->unionAll($secondQuery)
             ->sql('sqlite', false);
 
-        $expected = "SELECT name FROM `active_users` UNION ALL SELECT name FROM `archived_users`";
+        $expected = "SELECT `name` FROM `active_users` UNION ALL SELECT `name` FROM `archived_users`";
 
         $this->assertEquals($expected, $sql);
     }
@@ -73,9 +81,9 @@ class DbQuerySqliteUnionTest extends TestCase
             ->union($thirdQuery)
             ->sql('sqlite', false);
 
-        $expected = "SELECT email FROM `customers` "
-            . "UNION SELECT email FROM `suppliers` "
-            . "UNION SELECT email FROM `partners`";
+        $expected = "SELECT `email` FROM `customers` "
+            . "UNION SELECT `email` FROM `suppliers` "
+            . "UNION SELECT `email` FROM `partners`";
 
         $this->assertEquals($expected, $sql);
     }
@@ -94,10 +102,10 @@ class DbQuerySqliteUnionTest extends TestCase
             ->orderBy('created_at', 'DESC')
             ->sql('sqlite', false);
 
-        $this->assertStringContainsString('SELECT name, created_at FROM `active_posts`', $sql);
+        $this->assertStringContainsString('SELECT `name`, `created_at` FROM `active_posts`', $sql);
         $this->assertStringContainsString('UNION', $sql);
-        $this->assertStringContainsString('SELECT name, created_at FROM `archived_posts`', $sql);
-        $this->assertStringContainsString('ORDER BY created_at DESC', $sql);
+        $this->assertStringContainsString('SELECT `name`, `created_at` FROM `archived_posts`', $sql);
+        $this->assertStringContainsString('ORDER BY `created_at` DESC', $sql);
 
         $unionPos = strpos($sql, 'UNION');
         $orderByPos = strpos($sql, 'ORDER BY');
@@ -118,8 +126,8 @@ class DbQuerySqliteUnionTest extends TestCase
             ->limit(20)
             ->sql('sqlite', false);
 
-        $expected = "SELECT title FROM `news_posts` "
-            . "UNION SELECT title FROM `blog_posts` "
+        $expected = "SELECT `title` FROM `news_posts` "
+            . "UNION SELECT `title` FROM `blog_posts` "
             . "LIMIT 20";
 
         $this->assertEquals($expected, $sql);
@@ -142,12 +150,12 @@ class DbQuerySqliteUnionTest extends TestCase
             ->limit(50)
             ->sql('sqlite', false);
 
-        $this->assertStringContainsString('SELECT id, name, created_at FROM `active_items`', $sql);
-        $this->assertStringContainsString("WHERE status = 'open'", $sql);
+        $this->assertStringContainsString('SELECT `id`, `name`, `created_at` FROM `active_items`', $sql);
+        $this->assertStringContainsString("WHERE `status` = 'open'", $sql);
         $this->assertStringContainsString('UNION', $sql);
-        $this->assertStringContainsString('SELECT id, name, created_at FROM `archived_items`', $sql);
-        $this->assertStringContainsString("WHERE status = 'closed'", $sql);
-        $this->assertStringContainsString('ORDER BY created_at DESC', $sql);
+        $this->assertStringContainsString('SELECT `id`, `name`, `created_at` FROM `archived_items`', $sql);
+        $this->assertStringContainsString("WHERE `status` = 'closed'", $sql);
+        $this->assertStringContainsString('ORDER BY `created_at` DESC', $sql);
         $this->assertStringContainsString('LIMIT 50', $sql);
     }
 
@@ -170,14 +178,14 @@ class DbQuerySqliteUnionTest extends TestCase
             ->limit(100)
             ->sql('sqlite', false);
 
-        $this->assertStringContainsString('SELECT u.id, u.email', $sql);
+        $this->assertStringContainsString('SELECT `u`.`id`, `u`.`email`', $sql);
         $this->assertStringContainsString('FROM `active_users` `u`', $sql);
         $this->assertStringContainsString('INNER JOIN `profiles`', $sql);
-        $this->assertStringContainsString("WHERE u.status = 'verified'", $sql);
+        $this->assertStringContainsString("WHERE `u`.`status` = 'verified'", $sql);
         $this->assertStringContainsString('UNION', $sql);
         $this->assertStringContainsString('FROM `inactive_users` `u`', $sql);
         $this->assertStringContainsString('LEFT JOIN `profiles`', $sql);
-        $this->assertStringContainsString("WHERE u.last_login < '2023-01-01'", $sql);
+        $this->assertStringContainsString("WHERE `u`.`last_login` < '2023-01-01'", $sql);
         $this->assertStringContainsString('LIMIT 100', $sql);
     }
 
@@ -199,9 +207,9 @@ class DbQuerySqliteUnionTest extends TestCase
             ->unionAll($thirdQuery)
             ->sql('sqlite', false);
 
-        $expected = "SELECT email, created_at FROM `active_subscribers` "
-            . "UNION ALL SELECT email, created_at FROM `pending_subscribers` "
-            . "UNION ALL SELECT email, created_at FROM `archived_subscribers`";
+        $expected = "SELECT `email`, `created_at` FROM `active_subscribers` "
+            . "UNION ALL SELECT `email`, `created_at` FROM `pending_subscribers` "
+            . "UNION ALL SELECT `email`, `created_at` FROM `archived_subscribers`";
 
         $this->assertEquals($expected, $sql);
     }
@@ -224,9 +232,9 @@ class DbQuerySqliteUnionTest extends TestCase
             ->unionAll($thirdQuery)
             ->sql('sqlite', false);
 
-        $expected = "SELECT name FROM `customers` "
-            . "UNION SELECT name FROM `suppliers` "
-            . "UNION ALL SELECT name FROM `partners`";
+        $expected = "SELECT `name` FROM `customers` "
+            . "UNION SELECT `name` FROM `suppliers` "
+            . "UNION ALL SELECT `name` FROM `partners`";
 
         $this->assertEquals($expected, $sql);
     }
@@ -265,10 +273,10 @@ class DbQuerySqliteUnionTest extends TestCase
         $result = $query->sql('sqlite', true);
 
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $result);
-        $this->assertStringContainsString('SELECT id, name FROM `employees`', $result->sql());
-        $this->assertStringContainsString('WHERE country = ?', $result->sql());
+        $this->assertStringContainsString('SELECT `id`, `name` FROM `employees`', $result->sql());
+        $this->assertStringContainsString('WHERE `country` = ?', $result->sql());
         $this->assertStringContainsString('UNION ALL', $result->sql());
-        $this->assertStringContainsString('SELECT id, name FROM `suppliers`', $result->sql());
+        $this->assertStringContainsString('SELECT `id`, `name` FROM `suppliers`', $result->sql());
 
         // Verify binding order: main query bindings first, then UNION ALL bindings
         $bindings = $result->bindings();
