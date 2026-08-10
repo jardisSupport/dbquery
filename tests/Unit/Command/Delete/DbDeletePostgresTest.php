@@ -19,6 +19,14 @@ use UnexpectedValueException;
  * Tests: DELETE FROM, WHERE (PostgreSQL dialect)
  * Note: PostgreSQL does not support JOIN, ORDER BY, or LIMIT in DELETE statements
  */
+/*
+ * SQL-Pins am 2026-08-10 an das Auto-Quoting einfacher Identifier angepasst:
+ * WHERE/AND/OR-, HAVING-, ORDER-BY-, GROUP-BY-Felder und die SELECT-Feldliste
+ * quoten `ident` bzw. `alias.ident` jetzt dialektgerecht (MySQL/SQLite: Backtick,
+ * PostgreSQL: Double-Quote). Ausdruecke, '*', bereits Gequotetes und
+ * Expression::raw() bleiben byte-identisch roh. Alle Aenderungen in dieser
+ * Datei sind reine Quote-Zeichen-Diffs in erwarteten SQL-Strings.
+ */
 class DbDeletePostgresTest extends TestCase
 {
     public function testConstructor(): void
@@ -35,7 +43,7 @@ class DbDeletePostgresTest extends TestCase
             ->where('id')->equals(1)
             ->sql('postgres', false);
 
-        $expected = 'DELETE FROM "users" WHERE id = 1';
+        $expected = 'DELETE FROM "users" WHERE "id" = 1';
         $this->assertEquals($expected, $sql);
     }
 
@@ -48,7 +56,7 @@ class DbDeletePostgresTest extends TestCase
             ->sql('postgres', true);
 
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $result);
-        $this->assertEquals('DELETE FROM "users" WHERE id = ?', $result->sql());
+        $this->assertEquals('DELETE FROM "users" WHERE "id" = ?', $result->sql());
         $this->assertEquals([1], $result->bindings());
     }
 
@@ -60,7 +68,7 @@ class DbDeletePostgresTest extends TestCase
             ->where('u.id')->equals(1)
             ->sql('postgres', false);
 
-        $expected = 'DELETE FROM "users" "u" WHERE u.id = 1';
+        $expected = 'DELETE FROM "users" "u" WHERE "u"."id" = 1';
         $this->assertEquals($expected, $sql);
     }
 
@@ -73,7 +81,7 @@ class DbDeletePostgresTest extends TestCase
             ->and('created_at')->lower('2020-01-01')
             ->sql('postgres', false);
 
-        $expected = "DELETE FROM \"users\" WHERE status = 'inactive' AND created_at < '2020-01-01'";
+        $expected = "DELETE FROM \"users\" WHERE \"status\" = 'inactive' AND \"created_at\" < '2020-01-01'";
         $this->assertEquals($expected, $sql);
     }
 
@@ -86,7 +94,7 @@ class DbDeletePostgresTest extends TestCase
             ->or('status')->equals('banned')
             ->sql('postgres', false);
 
-        $expected = "DELETE FROM \"users\" WHERE status = 'deleted' OR status = 'banned'";
+        $expected = "DELETE FROM \"users\" WHERE \"status\" = 'deleted' OR \"status\" = 'banned'";
         $this->assertEquals($expected, $sql);
     }
 
@@ -99,7 +107,7 @@ class DbDeletePostgresTest extends TestCase
             ->sql('postgres', true);
 
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $result);
-        $this->assertEquals('DELETE FROM "users" WHERE status IN (?, ?, ?)', $result->sql());
+        $this->assertEquals('DELETE FROM "users" WHERE "status" IN (?, ?, ?)', $result->sql());
         $this->assertEquals(['deleted', 'banned', 'suspended'], $result->bindings());
     }
 
@@ -139,7 +147,7 @@ class DbDeletePostgresTest extends TestCase
             ->sql('postgres', true);
 
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $result);
-        $this->assertEquals('DELETE FROM "users" WHERE status = ? AND 1=0', $result->sql());
+        $this->assertEquals('DELETE FROM "users" WHERE "status" = ? AND 1=0', $result->sql());
         $this->assertEquals(['banned'], $result->bindings());
     }
 
@@ -151,7 +159,7 @@ class DbDeletePostgresTest extends TestCase
             ->where('created_at')->between('2020-01-01', '2020-12-31')
             ->sql('postgres', false);
 
-        $expected = "DELETE FROM \"logs\" WHERE created_at BETWEEN '2020-01-01' AND '2020-12-31'";
+        $expected = "DELETE FROM \"logs\" WHERE \"created_at\" BETWEEN '2020-01-01' AND '2020-12-31'";
         $this->assertEquals($expected, $sql);
     }
 
@@ -163,7 +171,7 @@ class DbDeletePostgresTest extends TestCase
             ->where('email')->like('%@spam.com')
             ->sql('postgres', false);
 
-        $expected = "DELETE FROM \"users\" WHERE email LIKE '%@spam.com'";
+        $expected = "DELETE FROM \"users\" WHERE \"email\" LIKE '%@spam.com'";
         $this->assertEquals($expected, $sql);
     }
 
@@ -175,7 +183,7 @@ class DbDeletePostgresTest extends TestCase
             ->where('deleted_at')->isNull()
             ->sql('postgres', false);
 
-        $expected = 'DELETE FROM "users" WHERE deleted_at IS NULL';
+        $expected = 'DELETE FROM "users" WHERE "deleted_at" IS NULL';
         $this->assertEquals($expected, $sql);
     }
 
@@ -187,7 +195,7 @@ class DbDeletePostgresTest extends TestCase
             ->where('email_verified_at')->isNotNull()
             ->sql('postgres', false);
 
-        $expected = 'DELETE FROM "users" WHERE email_verified_at IS NOT NULL';
+        $expected = 'DELETE FROM "users" WHERE "email_verified_at" IS NOT NULL';
         $this->assertEquals($expected, $sql);
     }
 
@@ -201,7 +209,7 @@ class DbDeletePostgresTest extends TestCase
             ->or('is_admin', '(')->equals(true, ')')
             ->sql('postgres', false);
 
-        $expected = "DELETE FROM \"users\" WHERE (status = 'active' AND age > 18) OR (is_admin = 1)";
+        $expected = "DELETE FROM \"users\" WHERE (\"status\" = 'active' AND \"age\" > 18) OR (\"is_admin\" = 1)";
         $this->assertEquals($expected, $sql);
     }
 
@@ -218,7 +226,7 @@ class DbDeletePostgresTest extends TestCase
             ->where()->exists($subquery)
             ->sql('postgres', false);
 
-        $expected = 'DELETE FROM "users" WHERE EXISTS (SELECT 1 FROM "orders" WHERE orders.user_id = users.id)';
+        $expected = 'DELETE FROM "users" WHERE EXISTS (SELECT 1 FROM "orders" WHERE "orders"."user_id" = users.id)';
         $this->assertEquals($expected, $sql);
     }
 
@@ -235,7 +243,7 @@ class DbDeletePostgresTest extends TestCase
             ->where()->notExists($subquery)
             ->sql('postgres', false);
 
-        $expected = 'DELETE FROM "users" WHERE NOT EXISTS (SELECT 1 FROM "orders" WHERE orders.user_id = users.id)';
+        $expected = 'DELETE FROM "users" WHERE NOT EXISTS (SELECT 1 FROM "orders" WHERE "orders"."user_id" = users.id)';
         $this->assertEquals($expected, $sql);
     }
 
@@ -360,7 +368,7 @@ class DbDeletePostgresTest extends TestCase
             ->sql('postgres', true);
 
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $result);
-        $expected = 'DELETE FROM "users" WHERE (status = ? AND last_login < ?) OR (email_verified_at IS NULL AND created_at < ?)';
+        $expected = 'DELETE FROM "users" WHERE ("status" = ? AND "last_login" < ?) OR ("email_verified_at" IS NULL AND "created_at" < ?)';
         $this->assertEquals($expected, $result->sql());
         $this->assertEquals(['inactive', '2020-01-01', '2019-01-01'], $result->bindings());
     }
@@ -378,7 +386,7 @@ class DbDeletePostgresTest extends TestCase
             ->sql('postgres', true);
 
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $result);
-        $expected = 'DELETE FROM "users" WHERE id IN ?';
+        $expected = 'DELETE FROM "users" WHERE "id" IN ?';
         $this->assertEquals($expected, $result->sql());
     }
 
@@ -395,7 +403,7 @@ class DbDeletePostgresTest extends TestCase
             ->sql('postgres', true);
 
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $result);
-        $expected = 'DELETE FROM "users" WHERE id NOT IN ?';
+        $expected = 'DELETE FROM "users" WHERE "id" NOT IN ?';
         $this->assertEquals($expected, $result->sql());
     }
 }

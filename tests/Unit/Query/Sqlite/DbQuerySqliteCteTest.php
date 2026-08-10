@@ -20,6 +20,14 @@ use PHPUnit\Framework\TestCase;
  *
  * Tests: WITH, WITH RECURSIVE
  */
+/*
+ * SQL-Pins am 2026-08-10 an das Auto-Quoting einfacher Identifier angepasst:
+ * WHERE/AND/OR-, HAVING-, ORDER-BY-, GROUP-BY-Felder und die SELECT-Feldliste
+ * quoten `ident` bzw. `alias.ident` jetzt dialektgerecht (MySQL/SQLite: Backtick,
+ * PostgreSQL: Double-Quote). Ausdruecke, '*', bereits Gequotetes und
+ * Expression::raw() bleiben byte-identisch roh. Alle Aenderungen in dieser
+ * Datei sind reine Quote-Zeichen-Diffs in erwarteten SQL-Strings.
+ */
 class DbQuerySqliteCteTest extends TestCase
 {
     public function testWithSingleCte(): void
@@ -36,7 +44,7 @@ class DbQuerySqliteCteTest extends TestCase
             ->from('active_users')
             ->sql('sqlite', false);
 
-        $expected = "WITH `active_users` AS (SELECT id, name FROM `users` WHERE status = 'active') "
+        $expected = "WITH `active_users` AS (SELECT `id`, `name` FROM `users` WHERE `status` = 'active') "
             . "SELECT * FROM `active_users`";
 
         $this->assertEquals($expected, $sql);
@@ -62,8 +70,8 @@ class DbQuerySqliteCteTest extends TestCase
             ->from('active_users')
             ->sql('sqlite', false);
 
-        $expected = "WITH `active_users` AS (SELECT id, name FROM `users` WHERE status = 'active'), "
-            . "`user_posts` AS (SELECT user_id, COUNT(*) as post_count FROM `posts` GROUP BY user_id) "
+        $expected = "WITH `active_users` AS (SELECT `id`, `name` FROM `users` WHERE `status` = 'active'), "
+            . "`user_posts` AS (SELECT `user_id`, COUNT(*) as `post_count` FROM `posts` GROUP BY `user_id`) "
             . "SELECT * FROM `active_users`";
 
         $this->assertEquals($expected, $sql);
@@ -84,8 +92,8 @@ class DbQuerySqliteCteTest extends TestCase
             ->innerJoin('user_stats', 'u.id = s.user_id', 's')
             ->sql('sqlite', false);
 
-        $expected = "WITH `user_stats` AS (SELECT user_id, COUNT(*) as post_count FROM `posts` GROUP BY user_id) "
-            . "SELECT u.name, s.post_count FROM `users` `u` INNER JOIN `user_stats` `s` ON u.id = s.user_id";
+        $expected = "WITH `user_stats` AS (SELECT `user_id`, COUNT(*) as `post_count` FROM `posts` GROUP BY `user_id`) "
+            . "SELECT `u`.`name`, `s`.`post_count` FROM `users` `u` INNER JOIN `user_stats` `s` ON u.id = s.user_id";
 
         $this->assertEquals($expected, $sql);
     }
@@ -107,9 +115,9 @@ class DbQuerySqliteCteTest extends TestCase
             ->sql('sqlite', false);
 
         $expected = "WITH `user_summary` AS "
-            . "(SELECT u.id, u.name, COUNT(p.id) as post_count FROM `users` `u` "
-            . "LEFT JOIN `posts` `p` ON u.id = p.user_id GROUP BY u.id, u.name) "
-            . "SELECT * FROM `user_summary` WHERE post_count > 5";
+            . "(SELECT `u`.`id`, `u`.`name`, COUNT(p.id) as `post_count` FROM `users` `u` "
+            . "LEFT JOIN `posts` `p` ON u.id = p.user_id GROUP BY `u`.`id`, `u`.`name`) "
+            . "SELECT * FROM `user_summary` WHERE `post_count` > 5";
 
         $this->assertEquals($expected, $sql);
     }
@@ -130,8 +138,8 @@ class DbQuerySqliteCteTest extends TestCase
             ->sql('sqlite', false);
 
         $expected = "WITH `recent_users` AS "
-            . "(SELECT * FROM `users` WHERE created_at > '2024-01-01') "
-            . "SELECT id, name FROM `recent_users` WHERE status = 'verified'";
+            . "(SELECT * FROM `users` WHERE `created_at` > '2024-01-01') "
+            . "SELECT `id`, `name` FROM `recent_users` WHERE `status` = 'verified'";
 
         $this->assertEquals($expected, $sql);
     }
@@ -153,8 +161,8 @@ class DbQuerySqliteCteTest extends TestCase
             ->sql('sqlite', false);
 
         $expected = "WITH `user_totals` AS "
-            . "(SELECT user_id, SUM(amount) as total FROM `orders` GROUP BY user_id) "
-            . "SELECT * FROM `user_totals` ORDER BY total DESC LIMIT 10";
+            . "(SELECT `user_id`, SUM(amount) as `total` FROM `orders` GROUP BY `user_id`) "
+            . "SELECT * FROM `user_totals` ORDER BY `total` DESC LIMIT 10";
 
         $this->assertEquals($expected, $sql);
     }
@@ -181,8 +189,8 @@ class DbQuerySqliteCteTest extends TestCase
             ->from('verified_users')
             ->sql('sqlite', false);
 
-        $expected = "WITH `active_users` AS (SELECT id, name, status FROM `users` WHERE active = 1), "
-            . "`verified_users` AS (SELECT id, name FROM `active_users` WHERE status = 'verified') "
+        $expected = "WITH `active_users` AS (SELECT `id`, `name`, `status` FROM `users` WHERE `active` = 1), "
+            . "`verified_users` AS (SELECT `id`, `name` FROM `active_users` WHERE `status` = 'verified') "
             . "SELECT * FROM `verified_users`";
 
         $this->assertEquals($expected, $sql);
@@ -209,9 +217,9 @@ class DbQuerySqliteCteTest extends TestCase
             ->innerJoin('post_counts', 'u.id = p.user_id', 'p')
             ->sql('sqlite', false);
 
-        $expected = "WITH `active_users` AS (SELECT id, name FROM `users` WHERE active = 1), "
-            . "`post_counts` AS (SELECT user_id, COUNT(*) as count FROM `posts` GROUP BY user_id) "
-            . "SELECT u.name, p.count FROM `active_users` `u` INNER JOIN `post_counts` `p` ON u.id = p.user_id";
+        $expected = "WITH `active_users` AS (SELECT `id`, `name` FROM `users` WHERE `active` = 1), "
+            . "`post_counts` AS (SELECT `user_id`, COUNT(*) as `count` FROM `posts` GROUP BY `user_id`) "
+            . "SELECT `u`.`name`, `p`.`count` FROM `active_users` `u` INNER JOIN `post_counts` `p` ON u.id = p.user_id";
 
         $this->assertEquals($expected, $sql);
     }
@@ -250,10 +258,10 @@ class DbQuerySqliteCteTest extends TestCase
             ->sql('sqlite', false);
 
         $this->assertStringContainsString('WITH `user_stats` AS', $sql);
-        $this->assertStringContainsString('SELECT id, name,', $sql);
+        $this->assertStringContainsString('SELECT `id`, `name`,', $sql);
         $this->assertStringContainsString('SELECT COUNT(*)', $sql);
         $this->assertStringContainsString('AS `post_count`', $sql);
-        $this->assertStringContainsString('FROM `user_stats` WHERE post_count > 10', $sql);
+        $this->assertStringContainsString('FROM `user_stats` WHERE `post_count` > 10', $sql);
     }
 
     // ==================== WITH RECURSIVE Tests ====================
@@ -280,8 +288,8 @@ class DbQuerySqliteCteTest extends TestCase
             ->sql('sqlite', false);
 
         $this->assertStringStartsWith('WITH RECURSIVE `category_tree` AS', $sql);
-        $this->assertStringContainsString('SELECT id, name, parent_id, 1 as level', $sql);
-        $this->assertStringContainsString('WHERE parent_id IS NULL', $sql);
+        $this->assertStringContainsString('SELECT `id`, `name`, `parent_id`, 1 as `level`', $sql);
+        $this->assertStringContainsString('WHERE `parent_id` IS NULL', $sql);
         $this->assertStringContainsString('UNION', $sql);
         $this->assertStringContainsString('SELECT * FROM `category_tree`', $sql);
     }
@@ -309,9 +317,9 @@ class DbQuerySqliteCteTest extends TestCase
             ->sql('sqlite', false);
 
         $this->assertStringContainsString('WITH RECURSIVE `hierarchy` AS', $sql);
-        $this->assertStringContainsString('0 as depth', $sql);
+        $this->assertStringContainsString('0 as `depth`', $sql);
         $this->assertStringContainsString('h.depth + 1', $sql);
-        $this->assertStringContainsString('ORDER BY depth ASC', $sql);
+        $this->assertStringContainsString('ORDER BY `depth` ASC', $sql);
     }
 
     public function testWithRecursiveMixedWithNormalCte(): void
@@ -369,7 +377,7 @@ class DbQuerySqliteCteTest extends TestCase
             ->sql('sqlite', false);
 
         $this->assertStringContainsString('WITH RECURSIVE `node_tree` AS', $sql);
-        $this->assertStringContainsString('FROM `node_tree` WHERE depth <= 3', $sql);
+        $this->assertStringContainsString('FROM `node_tree` WHERE `depth` <= 3', $sql);
     }
 
     public function testWithRecursiveAndLimit(): void
@@ -432,7 +440,7 @@ class DbQuerySqliteCteTest extends TestCase
             ->sql('sqlite', false);
 
         $this->assertStringContainsString('WITH RECURSIVE `folder_paths` AS', $sql);
-        $this->assertStringContainsString('CAST(name AS TEXT) as path', $sql);
+        $this->assertStringContainsString('CAST(name AS TEXT) as `path`', $sql);
         $this->assertStringContainsString("p.path || '/' || f.name", $sql);
     }
 
@@ -496,7 +504,7 @@ class DbQuerySqliteCteTest extends TestCase
             ->sql('sqlite', false);
 
         $this->assertStringContainsString('WITH RECURSIVE `cat_hierarchy` AS', $sql);
-        $this->assertStringContainsString('SELECT h.*, p.title', $sql);
+        $this->assertStringContainsString('SELECT h.*, `p`.`title`', $sql);
         $this->assertStringContainsString('INNER JOIN `products`', $sql);
     }
 
@@ -521,7 +529,7 @@ class DbQuerySqliteCteTest extends TestCase
         $this->assertStringContainsString('WITH RECURSIVE', $result->sql());
         $this->assertStringContainsString('`emp_hierarchy` AS', $result->sql());
         $this->assertStringContainsString('SELECT * FROM `departments`', $result->sql());
-        $this->assertStringContainsString('WHERE id = ?', $result->sql());
+        $this->assertStringContainsString('WHERE `id` = ?', $result->sql());
 
         // Verify binding order: CTE bindings first, then main query bindings
         $bindings = $result->bindings();

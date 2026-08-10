@@ -18,6 +18,14 @@ use UnexpectedValueException;
  *
  * Tests: DELETE FROM, WHERE, JOIN, ORDER BY, LIMIT
  */
+/*
+ * SQL-Pins am 2026-08-10 an das Auto-Quoting einfacher Identifier angepasst:
+ * WHERE/AND/OR-, HAVING-, ORDER-BY-, GROUP-BY-Felder und die SELECT-Feldliste
+ * quoten `ident` bzw. `alias.ident` jetzt dialektgerecht (MySQL/SQLite: Backtick,
+ * PostgreSQL: Double-Quote). Ausdruecke, '*', bereits Gequotetes und
+ * Expression::raw() bleiben byte-identisch roh. Alle Aenderungen in dieser
+ * Datei sind reine Quote-Zeichen-Diffs in erwarteten SQL-Strings.
+ */
 class DbDeleteMySqlTest extends TestCase
 {
     public function testConstructor(): void
@@ -34,7 +42,7 @@ class DbDeleteMySqlTest extends TestCase
             ->where('id')->equals(1)
             ->sql('mysql', false);
 
-        $expected = "DELETE FROM `users` WHERE id = 1";
+        $expected = "DELETE FROM `users` WHERE `id` = 1";
         $this->assertEquals($expected, $sql);
     }
 
@@ -47,7 +55,7 @@ class DbDeleteMySqlTest extends TestCase
             ->sql('mysql', true);
 
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $result);
-        $this->assertEquals("DELETE FROM `users` WHERE id = ?", $result->sql());
+        $this->assertEquals("DELETE FROM `users` WHERE `id` = ?", $result->sql());
         $this->assertEquals([1], $result->bindings());
     }
 
@@ -59,7 +67,7 @@ class DbDeleteMySqlTest extends TestCase
             ->where('u.id')->equals(1)
             ->sql('mysql', false);
 
-        $expected = "DELETE FROM `users` `u` WHERE u.id = 1";
+        $expected = "DELETE FROM `users` `u` WHERE `u`.`id` = 1";
         $this->assertEquals($expected, $sql);
     }
 
@@ -72,7 +80,7 @@ class DbDeleteMySqlTest extends TestCase
             ->and('created_at')->lower('2020-01-01')
             ->sql('mysql', false);
 
-        $expected = "DELETE FROM `users` WHERE status = 'inactive' AND created_at < '2020-01-01'";
+        $expected = "DELETE FROM `users` WHERE `status` = 'inactive' AND `created_at` < '2020-01-01'";
         $this->assertEquals($expected, $sql);
     }
 
@@ -85,7 +93,7 @@ class DbDeleteMySqlTest extends TestCase
             ->or('status')->equals('banned')
             ->sql('mysql', false);
 
-        $expected = "DELETE FROM `users` WHERE status = 'deleted' OR status = 'banned'";
+        $expected = "DELETE FROM `users` WHERE `status` = 'deleted' OR `status` = 'banned'";
         $this->assertEquals($expected, $sql);
     }
 
@@ -98,7 +106,7 @@ class DbDeleteMySqlTest extends TestCase
             ->sql('mysql', true);
 
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $result);
-        $this->assertEquals("DELETE FROM `users` WHERE status IN (?, ?, ?)", $result->sql());
+        $this->assertEquals("DELETE FROM `users` WHERE `status` IN (?, ?, ?)", $result->sql());
         $this->assertEquals(['deleted', 'banned', 'suspended'], $result->bindings());
     }
 
@@ -138,7 +146,7 @@ class DbDeleteMySqlTest extends TestCase
             ->sql('mysql', true);
 
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $result);
-        $this->assertEquals('DELETE FROM `users` WHERE status = ? AND 1=0', $result->sql());
+        $this->assertEquals('DELETE FROM `users` WHERE `status` = ? AND 1=0', $result->sql());
         $this->assertEquals(['banned'], $result->bindings());
     }
 
@@ -150,7 +158,7 @@ class DbDeleteMySqlTest extends TestCase
             ->where('created_at')->between('2020-01-01', '2020-12-31')
             ->sql('mysql', false);
 
-        $expected = "DELETE FROM `logs` WHERE created_at BETWEEN '2020-01-01' AND '2020-12-31'";
+        $expected = "DELETE FROM `logs` WHERE `created_at` BETWEEN '2020-01-01' AND '2020-12-31'";
         $this->assertEquals($expected, $sql);
     }
 
@@ -162,7 +170,7 @@ class DbDeleteMySqlTest extends TestCase
             ->where('email')->like('%@spam.com')
             ->sql('mysql', false);
 
-        $expected = "DELETE FROM `users` WHERE email LIKE '%@spam.com'";
+        $expected = "DELETE FROM `users` WHERE `email` LIKE '%@spam.com'";
         $this->assertEquals($expected, $sql);
     }
 
@@ -174,7 +182,7 @@ class DbDeleteMySqlTest extends TestCase
             ->where('deleted_at')->isNull()
             ->sql('mysql', false);
 
-        $expected = "DELETE FROM `users` WHERE deleted_at IS NULL";
+        $expected = "DELETE FROM `users` WHERE `deleted_at` IS NULL";
         $this->assertEquals($expected, $sql);
     }
 
@@ -186,7 +194,7 @@ class DbDeleteMySqlTest extends TestCase
             ->where('email_verified_at')->isNotNull()
             ->sql('mysql', false);
 
-        $expected = "DELETE FROM `users` WHERE email_verified_at IS NOT NULL";
+        $expected = "DELETE FROM `users` WHERE `email_verified_at` IS NOT NULL";
         $this->assertEquals($expected, $sql);
     }
 
@@ -200,7 +208,7 @@ class DbDeleteMySqlTest extends TestCase
             ->or('is_admin', '(')->equals(true, ')')
             ->sql('mysql', false);
 
-        $expected = "DELETE FROM `users` WHERE (status = 'active' AND age > 18) OR (is_admin = 1)";
+        $expected = "DELETE FROM `users` WHERE (`status` = 'active' AND `age` > 18) OR (`is_admin` = 1)";
         $this->assertEquals($expected, $sql);
     }
 
@@ -213,7 +221,7 @@ class DbDeleteMySqlTest extends TestCase
             ->where('users.status')->equals('deleted')
             ->sql('mysql', false);
 
-        $expected = "DELETE FROM `user_sessions` INNER JOIN `users` ON user_sessions.user_id = users.id WHERE users.status = 'deleted'";
+        $expected = "DELETE FROM `user_sessions` INNER JOIN `users` ON user_sessions.user_id = users.id WHERE `users`.`status` = 'deleted'";
         $this->assertEquals($expected, $sql);
     }
 
@@ -226,7 +234,7 @@ class DbDeleteMySqlTest extends TestCase
             ->where('p.id')->isNull()
             ->sql('mysql', false);
 
-        $expected = "DELETE `o` FROM `orphaned_records` `o` LEFT JOIN `parent_table` `p` ON o.parent_id = parent_table.id WHERE p.id IS NULL";
+        $expected = "DELETE `o` FROM `orphaned_records` `o` LEFT JOIN `parent_table` `p` ON o.parent_id = parent_table.id WHERE `p`.`id` IS NULL";
         $this->assertEquals($expected, $sql);
     }
 
@@ -239,7 +247,7 @@ class DbDeleteMySqlTest extends TestCase
             ->orderBy('created_at', 'ASC')
             ->sql('mysql', false);
 
-        $expected = "DELETE FROM `logs` WHERE level = 'debug' ORDER BY created_at ASC";
+        $expected = "DELETE FROM `logs` WHERE `level` = 'debug' ORDER BY `created_at` ASC";
         $this->assertEquals($expected, $sql);
     }
 
@@ -252,7 +260,7 @@ class DbDeleteMySqlTest extends TestCase
             ->limit(1000)
             ->sql('mysql', false);
 
-        $expected = "DELETE FROM `logs` WHERE level = 'info' LIMIT 1000";
+        $expected = "DELETE FROM `logs` WHERE `level` = 'info' LIMIT 1000";
         $this->assertEquals($expected, $sql);
     }
 
@@ -266,7 +274,7 @@ class DbDeleteMySqlTest extends TestCase
             ->limit(500)
             ->sql('mysql', false);
 
-        $expected = "DELETE FROM `logs` WHERE created_at < '2020-01-01' ORDER BY created_at ASC LIMIT 500";
+        $expected = "DELETE FROM `logs` WHERE `created_at` < '2020-01-01' ORDER BY `created_at` ASC LIMIT 500";
         $this->assertEquals($expected, $sql);
     }
 
@@ -283,7 +291,7 @@ class DbDeleteMySqlTest extends TestCase
             ->where()->exists($subquery)
             ->sql('mysql', false);
 
-        $expected = "DELETE FROM `users` WHERE EXISTS (SELECT 1 FROM `orders` WHERE orders.user_id = users.id)";
+        $expected = "DELETE FROM `users` WHERE EXISTS (SELECT 1 FROM `orders` WHERE `orders`.`user_id` = users.id)";
         $this->assertEquals($expected, $sql);
     }
 
@@ -300,7 +308,7 @@ class DbDeleteMySqlTest extends TestCase
             ->where()->notExists($subquery)
             ->sql('mysql', false);
 
-        $expected = "DELETE FROM `users` WHERE NOT EXISTS (SELECT 1 FROM `orders` WHERE orders.user_id = users.id)";
+        $expected = "DELETE FROM `users` WHERE NOT EXISTS (SELECT 1 FROM `orders` WHERE `orders`.`user_id` = users.id)";
         $this->assertEquals($expected, $sql);
     }
 
@@ -386,7 +394,7 @@ class DbDeleteMySqlTest extends TestCase
             ->sql('mysql', true);
 
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $result);
-        $expected = "DELETE FROM `users` WHERE (status = ? AND last_login < ?) OR (email_verified_at IS NULL AND created_at < ?)";
+        $expected = "DELETE FROM `users` WHERE (`status` = ? AND `last_login` < ?) OR (`email_verified_at` IS NULL AND `created_at` < ?)";
         $this->assertEquals($expected, $result->sql());
         $this->assertEquals(['inactive', '2020-01-01', '2019-01-01'], $result->bindings());
     }
@@ -404,7 +412,7 @@ class DbDeleteMySqlTest extends TestCase
             ->sql('mysql', true);
 
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $result);
-        $expected = "DELETE FROM `users` WHERE id IN ?";
+        $expected = "DELETE FROM `users` WHERE `id` IN ?";
         $this->assertEquals($expected, $result->sql());
     }
 }

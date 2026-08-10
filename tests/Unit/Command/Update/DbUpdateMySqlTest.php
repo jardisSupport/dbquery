@@ -18,6 +18,14 @@ use UnexpectedValueException;
  *
  * Tests: UPDATE, SET, WHERE, JOIN, ORDER BY, LIMIT
  */
+/*
+ * SQL-Pins am 2026-08-10 an das Auto-Quoting einfacher Identifier angepasst:
+ * WHERE/AND/OR-, HAVING-, ORDER-BY-, GROUP-BY-Felder und die SELECT-Feldliste
+ * quoten `ident` bzw. `alias.ident` jetzt dialektgerecht (MySQL/SQLite: Backtick,
+ * PostgreSQL: Double-Quote). Ausdruecke, '*', bereits Gequotetes und
+ * Expression::raw() bleiben byte-identisch roh. Alle Aenderungen in dieser
+ * Datei sind reine Quote-Zeichen-Diffs in erwarteten SQL-Strings.
+ */
 class DbUpdateMySqlTest extends TestCase
 {
     public function testConstructor(): void
@@ -35,7 +43,7 @@ class DbUpdateMySqlTest extends TestCase
             ->where('id')->equals(1)
             ->sql('mysql', false);
 
-        $expected = "UPDATE `users` SET `name` = 'John Doe' WHERE id = 1";
+        $expected = "UPDATE `users` SET `name` = 'John Doe' WHERE `id` = 1";
         $this->assertEquals($expected, $sql);
     }
 
@@ -49,7 +57,7 @@ class DbUpdateMySqlTest extends TestCase
             ->sql('mysql', true);
 
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $result);
-        $this->assertEquals("UPDATE `users` SET `name` = ? WHERE id = ?", $result->sql());
+        $this->assertEquals("UPDATE `users` SET `name` = ? WHERE `id` = ?", $result->sql());
         $this->assertEquals(['John Doe', 1], $result->bindings());
     }
 
@@ -66,7 +74,7 @@ class DbUpdateMySqlTest extends TestCase
             ->where('id')->equals(5)
             ->sql('mysql', false);
 
-        $expected = "UPDATE `users` SET `name` = 'Jane Smith', `email` = 'jane@example.com', `status` = 'active' WHERE id = 5";
+        $expected = "UPDATE `users` SET `name` = 'Jane Smith', `email` = 'jane@example.com', `status` = 'active' WHERE `id` = 5";
         $this->assertEquals($expected, $sql);
     }
 
@@ -84,7 +92,7 @@ class DbUpdateMySqlTest extends TestCase
             ->sql('mysql', true);
 
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $result);
-        $this->assertEquals("UPDATE `users` SET `name` = ?, `email` = ?, `status` = ? WHERE id = ?", $result->sql());
+        $this->assertEquals("UPDATE `users` SET `name` = ?, `email` = ?, `status` = ? WHERE `id` = ?", $result->sql());
         $this->assertEquals(['Jane Smith', 'jane@example.com', 'active', 5], $result->bindings());
     }
 
@@ -99,7 +107,7 @@ class DbUpdateMySqlTest extends TestCase
             ->where('id')->equals(1)
             ->sql('mysql', false);
 
-        $expected = "UPDATE `users` SET `name` = 'John Doe', `email` = 'john@example.com', `age` = 30 WHERE id = 1";
+        $expected = "UPDATE `users` SET `name` = 'John Doe', `email` = 'john@example.com', `age` = 30 WHERE `id` = 1";
         $this->assertEquals($expected, $sql);
     }
 
@@ -117,7 +125,7 @@ class DbUpdateMySqlTest extends TestCase
             ->sql('mysql', true);
 
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $result);
-        $this->assertEquals("UPDATE `users` SET `name` = ?, `email` = ?, `deleted_at` = ? WHERE id = ?", $result->sql());
+        $this->assertEquals("UPDATE `users` SET `name` = ?, `email` = ?, `deleted_at` = ? WHERE `id` = ?", $result->sql());
         $this->assertEquals(['John Doe', null, null, 1], $result->bindings());
     }
 
@@ -133,7 +141,7 @@ class DbUpdateMySqlTest extends TestCase
             ->where('id')->equals(1)
             ->sql('mysql', false);
 
-        $expected = "UPDATE `settings` SET `is_active` = 1, `is_deleted` = 0 WHERE id = 1";
+        $expected = "UPDATE `settings` SET `is_active` = 1, `is_deleted` = 0 WHERE `id` = 1";
         $this->assertEquals($expected, $sql);
     }
 
@@ -150,7 +158,7 @@ class DbUpdateMySqlTest extends TestCase
             ->where('id')->equals(10)
             ->sql('mysql', false);
 
-        $expected = "UPDATE `products` SET `price` = 19.99, `quantity` = 100, `discount` = 0 WHERE id = 10";
+        $expected = "UPDATE `products` SET `price` = 19.99, `quantity` = 100, `discount` = 0 WHERE `id` = 10";
         $this->assertEquals($expected, $sql);
     }
 
@@ -168,7 +176,7 @@ class DbUpdateMySqlTest extends TestCase
             ->where('id')->equals(5)
             ->sql('mysql', false);
 
-        $expected = "UPDATE `departments` SET `max_salary` = (SELECT MAX(salary) FROM `employees` WHERE department_id = 5) WHERE id = 5";
+        $expected = "UPDATE `departments` SET `max_salary` = (SELECT MAX(salary) FROM `employees` WHERE `department_id` = 5) WHERE `id` = 5";
         $this->assertEquals($expected, $sql);
     }
 
@@ -187,7 +195,7 @@ class DbUpdateMySqlTest extends TestCase
             ->sql('mysql', true);
 
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $result);
-        $this->assertEquals("UPDATE `departments` SET `max_salary` = (SELECT MAX(salary) FROM `employees` WHERE department_id = ?) WHERE id = ?", $result->sql());
+        $this->assertEquals("UPDATE `departments` SET `max_salary` = (SELECT MAX(salary) FROM `employees` WHERE `department_id` = ?) WHERE `id` = ?", $result->sql());
         $this->assertEquals([5, 5], $result->bindings());
     }
 
@@ -200,7 +208,7 @@ class DbUpdateMySqlTest extends TestCase
             ->where('email')->equals('john@example.com')
             ->sql('mysql', false);
 
-        $expected = "UPDATE `users` SET `status` = 'active' WHERE email = 'john@example.com'";
+        $expected = "UPDATE `users` SET `status` = 'active' WHERE `email` = 'john@example.com'";
         $this->assertEquals($expected, $sql);
     }
 
@@ -213,7 +221,7 @@ class DbUpdateMySqlTest extends TestCase
             ->where('status')->notEquals('deleted')
             ->sql('mysql', false);
 
-        $expected = "UPDATE `users` SET `active` = 1 WHERE status != 'deleted'";
+        $expected = "UPDATE `users` SET `active` = 1 WHERE `status` != 'deleted'";
         $this->assertEquals($expected, $sql);
     }
 
@@ -226,7 +234,7 @@ class DbUpdateMySqlTest extends TestCase
             ->where('email')->like('%@example.com')
             ->sql('mysql', false);
 
-        $expected = "UPDATE `users` SET `newsletter` = 1 WHERE email LIKE '%@example.com'";
+        $expected = "UPDATE `users` SET `newsletter` = 1 WHERE `email` LIKE '%@example.com'";
         $this->assertEquals($expected, $sql);
     }
 
@@ -239,7 +247,7 @@ class DbUpdateMySqlTest extends TestCase
             ->where('id')->in([1, 2, 3, 4, 5])
             ->sql('mysql', false);
 
-        $expected = "UPDATE `users` SET `status` = 'inactive' WHERE id IN (1, 2, 3, 4, 5)";
+        $expected = "UPDATE `users` SET `status` = 'inactive' WHERE `id` IN (1, 2, 3, 4, 5)";
         $this->assertEquals($expected, $sql);
     }
 
@@ -282,7 +290,7 @@ class DbUpdateMySqlTest extends TestCase
             ->sql('mysql', true);
 
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $result);
-        $this->assertEquals('UPDATE `users` SET `status` = ? WHERE status = ? AND 1=0', $result->sql());
+        $this->assertEquals('UPDATE `users` SET `status` = ? WHERE `status` = ? AND 1=0', $result->sql());
         $this->assertEquals(['inactive', 'active'], $result->bindings());
     }
 
@@ -295,7 +303,7 @@ class DbUpdateMySqlTest extends TestCase
             ->where('price')->between(100, 500)
             ->sql('mysql', false);
 
-        $expected = "UPDATE `products` SET `discount` = 10 WHERE price BETWEEN 100 AND 500";
+        $expected = "UPDATE `products` SET `discount` = 10 WHERE `price` BETWEEN 100 AND 500";
         $this->assertEquals($expected, $sql);
     }
 
@@ -308,7 +316,7 @@ class DbUpdateMySqlTest extends TestCase
             ->where('verified_at')->isNull()
             ->sql('mysql', false);
 
-        $expected = "UPDATE `users` SET `verified` = 0 WHERE verified_at IS NULL";
+        $expected = "UPDATE `users` SET `verified` = 0 WHERE `verified_at` IS NULL";
         $this->assertEquals($expected, $sql);
     }
 
@@ -321,7 +329,7 @@ class DbUpdateMySqlTest extends TestCase
             ->where('email')->isNotNull()
             ->sql('mysql', false);
 
-        $expected = "UPDATE `users` SET `active` = 1 WHERE email IS NOT NULL";
+        $expected = "UPDATE `users` SET `active` = 1 WHERE `email` IS NOT NULL";
         $this->assertEquals($expected, $sql);
     }
 
@@ -335,7 +343,7 @@ class DbUpdateMySqlTest extends TestCase
             ->and('created_at')->lower('2020-01-01')
             ->sql('mysql', false);
 
-        $expected = "UPDATE `users` SET `status` = 'archived' WHERE active = 0 AND created_at < '2020-01-01'";
+        $expected = "UPDATE `users` SET `status` = 'archived' WHERE `active` = 0 AND `created_at` < '2020-01-01'";
         $this->assertEquals($expected, $sql);
     }
 
@@ -349,7 +357,7 @@ class DbUpdateMySqlTest extends TestCase
             ->or('role')->equals('moderator')
             ->sql('mysql', false);
 
-        $expected = "UPDATE `users` SET `notification` = 1 WHERE role = 'admin' OR role = 'moderator'";
+        $expected = "UPDATE `users` SET `notification` = 1 WHERE `role` = 'admin' OR `role` = 'moderator'";
         $this->assertEquals($expected, $sql);
     }
 
@@ -365,7 +373,7 @@ class DbUpdateMySqlTest extends TestCase
             ->and('verified')->equals(1, ')')
             ->sql('mysql', false);
 
-        $expected = "UPDATE `users` SET `priority` = 'high' WHERE (status = 'active' AND role = 'premium') OR (score > 1000 AND verified = 1)";
+        $expected = "UPDATE `users` SET `priority` = 'high' WHERE (`status` = 'active' AND `role` = 'premium') OR (`score` > 1000 AND `verified` = 1)";
         $this->assertEquals($expected, $sql);
     }
 
@@ -392,7 +400,7 @@ class DbUpdateMySqlTest extends TestCase
             ->andJson('settings')->extract('$.premium')->equals(true)
             ->sql('mysql', false);
 
-        $expected = "UPDATE `users` SET `featured` = 1 WHERE status = 'active' AND JSON_EXTRACT(`settings`, '$.premium') = 1";
+        $expected = "UPDATE `users` SET `featured` = 1 WHERE `status` = 'active' AND JSON_EXTRACT(`settings`, '$.premium') = 1";
         $this->assertEquals($expected, $sql);
     }
 
@@ -406,7 +414,7 @@ class DbUpdateMySqlTest extends TestCase
             ->orJson('attributes')->extract('$.discontinued')->equals(true)
             ->sql('mysql', false);
 
-        $expected = "UPDATE `products` SET `visible` = 0 WHERE stock = 0 OR JSON_EXTRACT(`attributes`, '$.discontinued') = 1";
+        $expected = "UPDATE `products` SET `visible` = 0 WHERE `stock` = 0 OR JSON_EXTRACT(`attributes`, '$.discontinued') = 1";
         $this->assertEquals($expected, $sql);
     }
 
@@ -425,7 +433,7 @@ class DbUpdateMySqlTest extends TestCase
             ->where()->exists($subquery)
             ->sql('mysql', false);
 
-        $expected = "UPDATE `users` SET `has_pending_orders` = 1 WHERE EXISTS (SELECT 1 FROM `orders` WHERE orders.user_id = users.id AND orders.status = 'pending')";
+        $expected = "UPDATE `users` SET `has_pending_orders` = 1 WHERE EXISTS (SELECT 1 FROM `orders` WHERE `orders`.`user_id` = users.id AND `orders`.`status` = 'pending')";
         $this->assertEquals($expected, $sql);
     }
 
@@ -443,7 +451,7 @@ class DbUpdateMySqlTest extends TestCase
             ->where()->notExists($subquery)
             ->sql('mysql', false);
 
-        $expected = "UPDATE `users` SET `no_orders` = 1 WHERE NOT EXISTS (SELECT 1 FROM `orders` WHERE orders.user_id = users.id)";
+        $expected = "UPDATE `users` SET `no_orders` = 1 WHERE NOT EXISTS (SELECT 1 FROM `orders` WHERE `orders`.`user_id` = users.id)";
         $this->assertEquals($expected, $sql);
     }
 
@@ -457,7 +465,7 @@ class DbUpdateMySqlTest extends TestCase
             ->where('o.status')->equals('cancelled')
             ->sql('mysql', false);
 
-        $expected = "UPDATE `users` `u` INNER JOIN `orders` `o` ON orders.user_id = u.id SET `u.total_orders` = 0 WHERE o.status = 'cancelled'";
+        $expected = "UPDATE `users` `u` INNER JOIN `orders` `o` ON orders.user_id = u.id SET `u.total_orders` = 0 WHERE `o`.`status` = 'cancelled'";
         $this->assertEquals($expected, $sql);
     }
 
@@ -472,7 +480,7 @@ class DbUpdateMySqlTest extends TestCase
             ->sql('mysql', true);
 
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $result);
-        $this->assertEquals("UPDATE `users` `u` LEFT JOIN `orders` `o` ON orders.user_id = u.id SET `u.last_order_date` = ? WHERE o.id IS NULL", $result->sql());
+        $this->assertEquals("UPDATE `users` `u` LEFT JOIN `orders` `o` ON orders.user_id = u.id SET `u.last_order_date` = ? WHERE `o`.`id` IS NULL", $result->sql());
         $this->assertEquals([null], $result->bindings());
     }
 
@@ -487,7 +495,7 @@ class DbUpdateMySqlTest extends TestCase
             ->where('u.vip')->equals(1)
             ->sql('mysql', false);
 
-        $expected = "UPDATE `orders` `o` INNER JOIN `users` `u` ON users.id = o.user_id LEFT JOIN `discounts` `d` ON discounts.user_id = u.id SET `o.discount` = 15 WHERE u.vip = 1";
+        $expected = "UPDATE `orders` `o` INNER JOIN `users` `u` ON users.id = o.user_id LEFT JOIN `discounts` `d` ON discounts.user_id = u.id SET `o.discount` = 15 WHERE `u`.`vip` = 1";
         $this->assertEquals($expected, $sql);
     }
 
@@ -502,7 +510,7 @@ class DbUpdateMySqlTest extends TestCase
             ->limit(10)
             ->sql('mysql', false);
 
-        $expected = "UPDATE `users` SET `priority` = 1 WHERE status = 'active' ORDER BY created_at ASC LIMIT 10";
+        $expected = "UPDATE `users` SET `priority` = 1 WHERE `status` = 'active' ORDER BY `created_at` ASC LIMIT 10";
         $this->assertEquals($expected, $sql);
     }
 
@@ -517,7 +525,7 @@ class DbUpdateMySqlTest extends TestCase
             ->limit(5)
             ->sql('mysql', false);
 
-        $expected = "UPDATE `posts` SET `featured` = 0 WHERE views < 100 ORDER BY views DESC LIMIT 5";
+        $expected = "UPDATE `posts` SET `featured` = 0 WHERE `views` < 100 ORDER BY `views` DESC LIMIT 5";
         $this->assertEquals($expected, $sql);
     }
 
@@ -533,7 +541,7 @@ class DbUpdateMySqlTest extends TestCase
             ->limit(100)
             ->sql('mysql', false);
 
-        $expected = "UPDATE `users` SET `status` = 'archived' WHERE active = 0 ORDER BY last_login ASC, created_at DESC LIMIT 100";
+        $expected = "UPDATE `users` SET `status` = 'archived' WHERE `active` = 0 ORDER BY `last_login` ASC, `created_at` DESC LIMIT 100";
         $this->assertEquals($expected, $sql);
     }
 
@@ -547,7 +555,7 @@ class DbUpdateMySqlTest extends TestCase
             ->limit(1000)
             ->sql('mysql', false);
 
-        $expected = "UPDATE `logs` SET `processed` = 1 WHERE processed = 0 LIMIT 1000";
+        $expected = "UPDATE `logs` SET `processed` = 1 WHERE `processed` = 0 LIMIT 1000";
         $this->assertEquals($expected, $sql);
     }
 
@@ -564,7 +572,7 @@ class DbUpdateMySqlTest extends TestCase
             ->limit(50)
             ->sql('mysql', false);
 
-        $expected = "UPDATE `users` `u` INNER JOIN `orders` `o` ON orders.user_id = u.id SET `u.bonus` = 100 WHERE o.total > 1000 AND u.status = 'active' ORDER BY o.total DESC LIMIT 50";
+        $expected = "UPDATE `users` `u` INNER JOIN `orders` `o` ON orders.user_id = u.id SET `u.bonus` = 100 WHERE `o`.`total` > 1000 AND `u`.`status` = 'active' ORDER BY `o`.`total` DESC LIMIT 50";
         $this->assertEquals($expected, $sql);
     }
 
@@ -577,7 +585,7 @@ class DbUpdateMySqlTest extends TestCase
             ->where('u.id')->equals(1)
             ->sql('mysql', false);
 
-        $expected = "UPDATE `users` `u` SET `u.updated_at` = '2024-01-01' WHERE u.id = 1";
+        $expected = "UPDATE `users` `u` SET `u.updated_at` = '2024-01-01' WHERE `u`.`id` = 1";
         $this->assertEquals($expected, $sql);
     }
 
@@ -649,7 +657,7 @@ class DbUpdateMySqlTest extends TestCase
             ->where('id')->equals(1)
             ->sql('mysql', false);
 
-        $expected = "UPDATE `users` SET `updated_at` = NOW() WHERE id = 1";
+        $expected = "UPDATE `users` SET `updated_at` = NOW() WHERE `id` = 1";
         $this->assertEquals($expected, $sql);
     }
 
@@ -664,7 +672,7 @@ class DbUpdateMySqlTest extends TestCase
             ->sql('mysql', true);
 
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $result);
-        $this->assertEquals("UPDATE `users` SET `updated_at` = NOW(), `name` = ? WHERE id = ?", $result->sql());
+        $this->assertEquals("UPDATE `users` SET `updated_at` = NOW(), `name` = ? WHERE `id` = ?", $result->sql());
         $this->assertEquals(['John', 1], $result->bindings());
     }
 
@@ -690,7 +698,7 @@ class DbUpdateMySqlTest extends TestCase
             ->ignore()
             ->sql('mysql', false);
 
-        $expected = "UPDATE IGNORE `users` SET `name` = 'John' WHERE id = 1";
+        $expected = "UPDATE IGNORE `users` SET `name` = 'John' WHERE `id` = 1";
         $this->assertEquals($expected, $sql);
     }
 }

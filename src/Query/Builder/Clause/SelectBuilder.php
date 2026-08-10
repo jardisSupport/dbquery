@@ -22,6 +22,8 @@ class SelectBuilder
      * @param string $dialect The SQL dialect (mysql, postgres, sqlite)
      * @param bool $prepared Whether to use prepared statement mode
      * @param callable $quoteIdentifier Callback to quote identifiers: fn(string): string
+     * @param callable $quoteFieldList Callback quoting simple identifiers in the
+     *        field list, leaving everything else untouched: fn(string): string
      * @param array<int|string, mixed> &$bindings Reference to bindings array (modified in place)
      * @return string The SELECT clause
      */
@@ -30,10 +32,11 @@ class SelectBuilder
         string $dialect,
         bool $prepared,
         callable $quoteIdentifier,
+        callable $quoteFieldList,
         array &$bindings
     ): string {
         $distinct = $state->isDistinct() ? 'DISTINCT ' : '';
-        $selectFields = trim($state->getFields());
+        $selectFields = $quoteFieldList(trim($state->getFields()));
 
         $additionalFields = [];
 

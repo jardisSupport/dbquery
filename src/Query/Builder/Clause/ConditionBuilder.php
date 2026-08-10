@@ -29,6 +29,8 @@ class ConditionBuilder
      * @param bool $prepared Whether to use prepared statement mode
      * @param callable $processJsonPlaceholders Callback to process JSON placeholders: fn(string): string
      * @param callable $replaceSubqueryPlaceholders Callback to replace subquery placeholders: fn(string): string
+     * @param callable $quoteMarkedIdentifiers Callback to replace identifier markers with
+     *        dialect-quoted identifiers: fn(string): string
      * @param array<int|string, mixed> &$bindings Reference to bindings array (modified in place)
      * @return string The processed conditions string
      */
@@ -38,6 +40,7 @@ class ConditionBuilder
         bool $prepared,
         callable $processJsonPlaceholders,
         callable $replaceSubqueryPlaceholders,
+        callable $quoteMarkedIdentifiers,
         array &$bindings
     ): string {
         $result = '';
@@ -47,6 +50,9 @@ class ConditionBuilder
 
             foreach ($conditions as $condition) {
                 if (is_string($condition)) {
+                    // Replace identifier markers with dialect-quoted identifiers
+                    $condition = $quoteMarkedIdentifiers($condition);
+
                     // Process string conditions and replace subquery placeholders if in prepared mode
                     if ($prepared) {
                         $condition = $replaceSubqueryPlaceholders($condition);
