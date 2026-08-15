@@ -203,9 +203,6 @@ $result->lastInsertId();   // string|false     (ExecuteResult only)
 
 ## VERSION-AWARE SQL
 ```php
-// BuilderRegistry resolves version-specific classes:
-// Pattern: namespace\method\mysql\v80\FullJoin (dots removed from version)
-// Fallback to base class when no version override exists
 $q->sql('mysql', prepared: true, version: '8.0');
 $q->sql('postgres', prepared: true, version: '16');
 ```
