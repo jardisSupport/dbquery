@@ -4,7 +4,7 @@ description: Fluent SQL builder — SELECT, INSERT, UPDATE, DELETE, CTEs, window
 user-invocable: false
 zone: post-active
 persona: C
-prerequisites: [rules-architecture, rules-patterns, adapter-dbconnection]
+prerequisites: [foundation-architecture, foundation-patterns, adapter-dbconnection]
 next: []
 ---
 
