@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace JardisSupport\DbQuery\Command\Insert;
 
+use InvalidArgumentException;
 use JardisSupport\DbQuery\Data\Dialect;
 
 /**
@@ -48,16 +49,34 @@ class InsertMySql extends InsertSqlBuilder
     }
 
     /**
-     * ON DUPLICATE KEY UPDATE - MySQL/MariaDB pick the conflicting unique key themselves,
-     * so onDuplicateKeyUpdate() needs no conflict target here. onConflict()/doUpdate()/doNothing()
-     * are PostgreSQL/SQLite syntax and are not rendered by this dialect.
+     * ON DUPLICATE KEY UPDATE - MySQL/MariaDB pick the conflicting unique key themselves.
+     *
+     * All upsert entry points render here, so no capability is silently dropped:
+     * - onDuplicateKeyUpdate() and onConflict()->doUpdate() -> ON DUPLICATE KEY UPDATE col = ?
+     *   (both merge, onDuplicateKeyUpdate() wins per column)
+     * - onConflict(col, ...)->doNothing() -> ON DUPLICATE KEY UPDATE col = col, a no-op that
+     *   skips only the duplicate-key case. INSERT IGNORE is deliberately not used: it also
+     *   downgrades NOT NULL, FK and truncation errors to warnings.
      *
      * @param bool $prepared
      * @return string
+     * @throws InvalidArgumentException if doNothing() is used without a conflict target
      */
     protected function buildOnDuplicateKeyUpdate(bool $prepared): string
     {
-        $fields = $this->state->getOnDuplicateKeyUpdate();
+        if ($this->state->isDoNothing()) {
+            $columns = $this->state->getOnConflictColumns();
+            if (empty($columns)) {
+                throw new InvalidArgumentException(
+                    'doNothing() on ' . $this->dialect . ' needs a conflict target: call onConflict(...columns) first'
+                );
+            }
+            $column = $this->quoteIdentifier($columns[0]);
+
+            return ' ON DUPLICATE KEY UPDATE ' . $column . ' = ' . $column;
+        }
+
+        $fields = $this->upsertFields();
         if (empty($fields)) {
             return '';
         }

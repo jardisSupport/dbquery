@@ -335,7 +335,8 @@ class DbInsertMySqlTest extends TestCase
 
     public function testOnConflictDoesNothingForMySQL(): void
     {
-        // MySQL doesn't support ON CONFLICT syntax, so it should be ignored
+        // Soll geändert: stilles Nichts war Defekt K1 (R1019, pm-neubau)
+        // onConflict()->doUpdate() renders ON DUPLICATE KEY UPDATE on MySQL/MariaDB
         $sql = (new DbInsert())
             ->into('users')
             ->set(['name' => 'John', 'email' => 'john@example.com'])
@@ -343,14 +344,15 @@ class DbInsertMySqlTest extends TestCase
             ->doUpdate(['name' => 'Updated Name'])
             ->sql('mysql', false);
 
-        // Should produce normal INSERT without ON CONFLICT clause
-        $expected = "INSERT INTO `users` (`name`, `email`) VALUES ('John', 'john@example.com')";
+        $expected = "INSERT INTO `users` (`name`, `email`) VALUES ('John', 'john@example.com')"
+            . " ON DUPLICATE KEY UPDATE `name` = 'Updated Name'";
         $this->assertEquals($expected, $sql);
     }
 
     public function testOnConflictDoNothingForMySQL(): void
     {
-        // MySQL doesn't support ON CONFLICT syntax
+        // Soll geändert: stilles Nichts war Defekt K1 (R1019, pm-neubau)
+        // doNothing() renders the no-op upsert `col = col` (no INSERT IGNORE: it would mute other errors)
         $sql = (new DbInsert())
             ->into('users')
             ->set(['name' => 'John', 'email' => 'john@example.com'])
@@ -358,8 +360,8 @@ class DbInsertMySqlTest extends TestCase
             ->doNothing()
             ->sql('mysql', false);
 
-        // Should produce normal INSERT without ON CONFLICT clause
-        $expected = "INSERT INTO `users` (`name`, `email`) VALUES ('John', 'john@example.com')";
+        $expected = "INSERT INTO `users` (`name`, `email`) VALUES ('John', 'john@example.com')"
+            . " ON DUPLICATE KEY UPDATE `email` = `email`";
         $this->assertEquals($expected, $sql);
     }
 }
