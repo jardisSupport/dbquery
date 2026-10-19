@@ -142,10 +142,46 @@ $insert = (new DbInsert())
     ->into('products')
     ->fields('sku', 'name', 'price')
     ->values('ABC-001', 'Widget', 9.99)
-    ->onDuplicateKey(['name', 'price']);
+    ->onConflict('sku')                    // conflict target (used by PostgreSQL/SQLite)
+    ->onDuplicateKeyUpdate('name', 'Widget')
+    ->onDuplicateKeyUpdate('price', 9.99);
 
 $sql = $insert->sql('mysql', prepared: true);
 ```
+
+### Upsert in every dialect
+
+`onDuplicateKeyUpdate()` renders the same upsert on every dialect:
+
+| Dialect | Rendered |
+|---|---|
+| MySQL / MariaDB | `ON DUPLICATE KEY UPDATE col = ?` (the database picks the conflicting unique key) |
+| PostgreSQL / SQLite | `ON CONFLICT (target) DO UPDATE SET col = ?` |
+
+PostgreSQL and SQLite need a conflict target: call `onConflict('col', ...)` first.
+Without it `sql()` throws an `InvalidArgumentException` instead of silently dropping
+the clause. MySQL/MariaDB ignore the target, so one call chain is valid on all four
+dialects. `onConflict()->doUpdate([...])` stays available and feeds the same clause
+on PostgreSQL/SQLite (both entry points merge; `onDuplicateKeyUpdate()` wins per column).
+
+### Literal substring search (LIKE with ESCAPE)
+
+`like()` / `notLike()` take a pattern as given: `%` and `_` in a user's search term
+act as wildcards. For a search for a *literal* term pass a `LikePattern`:
+
+```php
+use JardisSupport\DbQuery\Data\LikePattern;
+
+$query->where('name')->like(LikePattern::contains('50%'));    // LIKE ? ESCAPE '!'  with '%50!%%'
+$query->where('name')->like(LikePattern::startsWith('a_b'));  // 'a!_b%'
+$query->where('name')->like(LikePattern::endsWith('x'));      // '%x'
+$query->where('name')->like(LikePattern::literal('a_b'));     // 'a!_b' (no wildcards at all)
+$query->where('name')->notLike(LikePattern::contains('spam'));
+```
+
+`%`, `_` and the escape character `!` inside the term are escaped in one place
+(`LikePattern`); the clause `ESCAPE '!'` is identical on MySQL, MariaDB, PostgreSQL
+and SQLite. Works in `where`/`and`/`or`/`having` and for SELECT, UPDATE and DELETE.
 
 ## Documentation
 
