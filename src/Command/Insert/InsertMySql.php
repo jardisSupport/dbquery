@@ -46,4 +46,22 @@ class InsertMySql extends InsertSqlBuilder
     {
         return 'REPLACE';
     }
+
+    /**
+     * ON DUPLICATE KEY UPDATE - MySQL/MariaDB pick the conflicting unique key themselves,
+     * so onDuplicateKeyUpdate() needs no conflict target here. onConflict()/doUpdate()/doNothing()
+     * are PostgreSQL/SQLite syntax and are not rendered by this dialect.
+     *
+     * @param bool $prepared
+     * @return string
+     */
+    protected function buildOnDuplicateKeyUpdate(bool $prepared): string
+    {
+        $fields = $this->state->getOnDuplicateKeyUpdate();
+        if (empty($fields)) {
+            return '';
+        }
+
+        return ' ON DUPLICATE KEY UPDATE ' . $this->buildUpdateAssignments($fields, $prepared);
+    }
 }

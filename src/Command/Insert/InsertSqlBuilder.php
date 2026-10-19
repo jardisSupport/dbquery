@@ -286,55 +286,111 @@ abstract class InsertSqlBuilder
     }
 
     /**
-     * Build ON DUPLICATE KEY UPDATE clause (MySQL-specific)
+     * Build the dialect's "ON DUPLICATE KEY UPDATE" form of an upsert.
+     *
+     * Default: nothing. Only the MySQL/MariaDB builder renders this form; the
+     * other dialects render the same capability through buildOnConflict().
      *
      * @param bool $prepared
      * @return string
      */
     protected function buildOnDuplicateKeyUpdate(bool $prepared): string
     {
-        $updates = $this->state->getOnDuplicateKeyUpdate();
-
-        if (empty($updates)) {
-            return '';
-        }
-
-        // Only MySQL supports ON DUPLICATE KEY UPDATE
-        if ($this->dialect !== 'mysql') {
-            return '';
-        }
-
-        $setParts = [];
-        foreach ($updates as $field => $value) {
-            $quotedField = $this->quoteIdentifier($field);
-
-            if ($value instanceof ExpressionInterface) {
-                $setParts[] = $quotedField . ' = ' . $value->toSql();
-            } else {
-                if ($prepared) {
-                    $this->bindings[] = $value;
-                    $setParts[] = $quotedField . ' = ?';
-                } else {
-                    $formattedValue = $this->formatValue($value);
-                    $setParts[] = $quotedField . ' = ' . $formattedValue;
-                }
-            }
-        }
-
-        return ' ON DUPLICATE KEY UPDATE ' . implode(', ', $setParts);
+        return '';
     }
 
     /**
-     * Build ON CONFLICT clause (PostgreSQL/SQLite style upsert)
+     * Build the dialect's "ON CONFLICT" form of an upsert.
+     *
+     * Default: nothing. Overridden by the PostgreSQL and SQLite builders.
      *
      * @param bool $prepared
      * @return string
      */
     protected function buildOnConflict(bool $prepared): string
     {
-        // Default implementation returns empty string
-        // Override in dialect-specific builders for PostgreSQL and SQLite
         return '';
+    }
+
+    /**
+     * The fields an upsert updates on conflict, independent of the entry point
+     * (onDuplicateKeyUpdate() or onConflict()->doUpdate()) the caller used.
+     *
+     * @return array<string, mixed>
+     */
+    protected function upsertFields(): array
+    {
+        return array_merge($this->state->getDoUpdateFields(), $this->state->getOnDuplicateKeyUpdate());
+    }
+
+    /**
+     * Render "col = ?, col2 = NOW()" for an upsert's update fields
+     *
+     * @param array<string, mixed> $fields
+     * @param bool $prepared
+     * @return string
+     */
+    protected function buildUpdateAssignments(array $fields, bool $prepared): string
+    {
+        $setParts = [];
+        foreach ($fields as $field => $value) {
+            $quotedField = $this->quoteIdentifier((string) $field);
+
+            if ($value instanceof ExpressionInterface) {
+                $setParts[] = $quotedField . ' = ' . $value->toSql();
+            } elseif ($prepared) {
+                $this->bindings[] = $value;
+                $setParts[] = $quotedField . ' = ?';
+            } else {
+                $setParts[] = $quotedField . ' = ' . $this->formatValue($value);
+            }
+        }
+
+        return implode(', ', $setParts);
+    }
+
+    /**
+     * ON CONFLICT (cols) DO NOTHING | DO UPDATE SET ... (PostgreSQL and SQLite syntax)
+     *
+     * The conflict target comes from onConflict(). An upsert without a target
+     * is an error, not a silently dropped clause.
+     *
+     * @param bool $prepared
+     * @return string
+     * @throws InvalidArgumentException if update fields are given but no conflict target
+     */
+    protected function buildOnConflictClause(bool $prepared): string
+    {
+        $conflictColumns = $this->state->getOnConflictColumns();
+        $updateFields = $this->upsertFields();
+
+        if (empty($conflictColumns)) {
+            if (!empty($updateFields)) {
+                throw new InvalidArgumentException(
+                    'An upsert on ' . $this->dialect . ' needs a conflict target: '
+                    . 'call onConflict(...columns) before onDuplicateKeyUpdate() / doUpdate()'
+                );
+            }
+
+            return '';
+        }
+
+        $quotedColumns = array_map(
+            fn($col) => $this->quoteIdentifier($col),
+            $conflictColumns
+        );
+
+        $conflictClause = ' ON CONFLICT (' . implode(', ', $quotedColumns) . ')';
+
+        if ($this->state->isDoNothing()) {
+            return $conflictClause . ' DO NOTHING';
+        }
+
+        if (empty($updateFields)) {
+            return '';
+        }
+
+        return $conflictClause . ' DO UPDATE SET ' . $this->buildUpdateAssignments($updateFields, $prepared);
     }
 
     /**
