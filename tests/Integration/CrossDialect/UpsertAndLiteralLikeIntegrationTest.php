@@ -46,12 +46,6 @@ class UpsertAndLiteralLikeIntegrationTest extends TestCase
         ];
     }
 
-    /** @return array<string, array{string}> */
-    public static function onConflictDialects(): array
-    {
-        return ['postgres' => ['postgres'], 'sqlite' => ['sqlite']];
-    }
-
     private function connection(string $dialect): PDO
     {
         return match ($dialect) {
@@ -113,8 +107,8 @@ class UpsertAndLiteralLikeIntegrationTest extends TestCase
         $this->assertEquals(2, $rows[0]['age']);
     }
 
-    #[DataProvider('onConflictDialects')]
-    public function testDoUpdateEntryPointStillUpsertsOnPostgresAndSqlite(string $dialect): void
+    #[DataProvider('dialects')]
+    public function testDoUpdateEntryPointHasTheSameEffectInEveryDialect(string $dialect): void
     {
         $pdo = $this->prepareTable($dialect);
 
@@ -134,8 +128,8 @@ class UpsertAndLiteralLikeIntegrationTest extends TestCase
         $this->assertSame('Name 2', $rows[0]['name']);
     }
 
-    #[DataProvider('onConflictDialects')]
-    public function testDoNothingKeepsTheFirstRowOnPostgresAndSqlite(string $dialect): void
+    #[DataProvider('dialects')]
+    public function testDoNothingKeepsTheFirstRowInEveryDialect(string $dialect): void
     {
         $pdo = $this->prepareTable($dialect);
 

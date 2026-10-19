@@ -38,8 +38,11 @@ versioning follows [SemVer](https://semver.org/).
 - **`onDuplicateKeyUpdate()` rendered nothing on PostgreSQL and SQLite** although
   the contract promises all dialects. It now renders `ON CONFLICT (target) DO UPDATE SET ...`
   there (target from `onConflict()`; without a target `sql()` throws
-  `InvalidArgumentException` instead of silently dropping the clause). MySQL/MariaDB
-  behaviour is unchanged. The three duplicated SET-clause renderers are now one.
+  `InvalidArgumentException` instead of silently dropping the clause). On
+  MySQL/MariaDB `onConflict()->doUpdate()` now renders `ON DUPLICATE KEY UPDATE`
+  and `onConflict(col)->doNothing()` the side-effect-free no-op `col = col`
+  (no `INSERT IGNORE`, which would also mute NOT NULL/FK errors); `doNothing()`
+  without a target throws. The three duplicated SET-clause renderers are now one.
 
 - camelCase columns created with quoted DDL (e.g. `"createdAt"`) failed on
   PostgreSQL with error 42703 when referenced in WHERE/ORDER BY/GROUP BY/

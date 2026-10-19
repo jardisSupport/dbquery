@@ -77,15 +77,34 @@ class UpsertDialectTest extends TestCase
         }
     }
 
-    public function testMySqlKeepsIgnoringPostgresSyntaxAndTakesOnDuplicateKeyUpdateAlongside(): void
+    public function testMySqlDoUpdateRendersOnDuplicateKeyUpdateAndMergesWithOnDuplicateKeyUpdate(): void
     {
-        $sql = (new DbInsert())->into('t')->set(['k' => 1])
-            ->onConflict('k')
-            ->doUpdate(['a' => 1])
-            ->onDuplicateKeyUpdate('b', 2)
-            ->sql('mysql', false);
+        foreach (['mysql', 'mariadb'] as $dialect) {
+            $sql = (new DbInsert())->into('t')->set(['k' => 1])
+                ->onConflict('k')
+                ->doUpdate(['a' => 1, 'b' => 1])
+                ->onDuplicateKeyUpdate('b', 2)
+                ->sql($dialect, false);
 
-        $this->assertStringEndsWith('ON DUPLICATE KEY UPDATE `b` = 2', $sql);
+            $this->assertStringEndsWith('ON DUPLICATE KEY UPDATE `a` = 1, `b` = 2', $sql);
+        }
+    }
+
+    public function testMySqlDoNothingRendersNoOpUpsertNotInsertIgnore(): void
+    {
+        foreach (['mysql', 'mariadb'] as $dialect) {
+            $sql = (new DbInsert())->into('t')->set(['k' => 1])->onConflict('k', 'j')->doNothing()
+                ->sql($dialect, false);
+
+            $this->assertStringStartsWith('INSERT INTO', $sql);
+            $this->assertStringEndsWith('ON DUPLICATE KEY UPDATE `k` = `k`', $sql);
+        }
+    }
+
+    public function testMySqlDoNothingWithoutTargetFailsLoudly(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        (new DbInsert())->into('t')->set(['k' => 1])->doNothing()->sql('mysql');
     }
 
     public function testNoUpsertNoClause(): void
