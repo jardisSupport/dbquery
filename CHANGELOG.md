@@ -8,6 +8,12 @@ versioning follows [SemVer](https://semver.org/).
 
 ### Added
 
+- **`LikePattern` - literal substring search.** `like()` / `notLike()` accept
+  `LikePattern::contains() / startsWith() / endsWith() / literal()`; `%`, `_` and
+  the escape character are escaped in one place and the condition renders
+  `LIKE ? ESCAPE '!'` with the same effect on MySQL, MariaDB, PostgreSQL and SQLite.
+  Plain `like('...')` is unchanged.
+
 - **Identifier auto-quoting for simple identifiers.** Fields passed to
   `where()`/`and()`/`or()`, `having()`, `orderBy()`, `groupBy()` and the
   `select()` field list are now quoted with the dialect's identifier quoting
@@ -28,6 +34,12 @@ versioning follows [SemVer](https://semver.org/).
   `Query\Formatter\FieldListIdentifierQuoter`.
 
 ### Fixed
+
+- **`onDuplicateKeyUpdate()` rendered nothing on PostgreSQL and SQLite** although
+  the contract promises all dialects. It now renders `ON CONFLICT (target) DO UPDATE SET ...`
+  there (target from `onConflict()`; without a target `sql()` throws
+  `InvalidArgumentException` instead of silently dropping the clause). MySQL/MariaDB
+  behaviour is unchanged. The three duplicated SET-clause renderers are now one.
 
 - camelCase columns created with quoted DDL (e.g. `"createdAt"`) failed on
   PostgreSQL with error 42703 when referenced in WHERE/ORDER BY/GROUP BY/
