@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace JardisSupport\DbQuery\Query\Condition;
 
+use JardisSupport\DbQuery\Data\LikePattern;
 use JardisSupport\DbQuery\Data\QueryConditionCollector;
 use JardisSupport\DbQuery\Factory\BuilderRegistry;
 use JardisSupport\DbQuery\Query\Builder\Condition;
@@ -238,7 +239,7 @@ class QueryJsonCondition implements DbQueryJsonConditionBuilderInterface
         mixed $value,
         ?string $closeBracket = null
     ): DbQueryBuilderInterface|DbUpdateBuilderInterface|DbDeleteBuilderInterface {
-        $compare = ' LIKE ' . $this->getValue($value);
+        $compare = ' LIKE ' . $this->getLikeValue($value);
         return $this->buildCondition($compare, $closeBracket);
     }
 
@@ -246,7 +247,7 @@ class QueryJsonCondition implements DbQueryJsonConditionBuilderInterface
         mixed $value,
         ?string $closeBracket = null
     ): DbQueryBuilderInterface|DbUpdateBuilderInterface|DbDeleteBuilderInterface {
-        $compare = ' NOT LIKE ' . $this->getValue($value);
+        $compare = ' NOT LIKE ' . $this->getLikeValue($value);
         return $this->buildCondition($compare, $closeBracket);
     }
 
@@ -262,6 +263,21 @@ class QueryJsonCondition implements DbQueryJsonConditionBuilderInterface
     ): DbQueryBuilderInterface|DbUpdateBuilderInterface|DbDeleteBuilderInterface {
         $compare = ' IS NOT NULL';
         return $this->buildCondition($compare, $closeBracket);
+    }
+
+    /**
+     * Resolves the right-hand side of LIKE / NOT LIKE.
+     *
+     * A LikePattern binds its escaped pattern and appends the ESCAPE clause;
+     * every other value keeps the previous behaviour.
+     */
+    protected function getLikeValue(mixed $value): string
+    {
+        if ($value instanceof LikePattern) {
+            return $this->getValue($value->pattern()) . $value->escapeClause();
+        }
+
+        return $this->getValue($value);
     }
 
     /**

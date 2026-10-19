@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace JardisSupport\DbQuery\Command\Insert;
 
 use JardisSupport\DbQuery\Data\Dialect;
-use JardisSupport\Contract\DbQuery\ExpressionInterface;
 
 /**
  * SQLite INSERT SQL Generator
@@ -49,60 +48,15 @@ class InsertSqliteSql extends InsertSqlBuilder
     }
 
     /**
-     * Build ON CONFLICT clause for SQLite
+     * ON CONFLICT (columns) DO UPDATE SET ... | DO NOTHING
      *
-     * Supports:
-     * - ON CONFLICT (columns) DO UPDATE SET ...
-     * - ON CONFLICT (columns) DO NOTHING
+     * Reached through onConflict()->doUpdate() and onDuplicateKeyUpdate() alike.
      *
      * @param bool $prepared
      * @return string
      */
     protected function buildOnConflict(bool $prepared): string
     {
-        $conflictColumns = $this->state->getOnConflictColumns();
-
-        if (empty($conflictColumns)) {
-            return '';
-        }
-
-        // Quote conflict columns
-        $quotedColumns = array_map(
-            fn($col) => $this->quoteIdentifier($col),
-            $conflictColumns
-        );
-
-        $conflictClause = ' ON CONFLICT (' . implode(', ', $quotedColumns) . ')';
-
-        // Handle DO NOTHING
-        if ($this->state->isDoNothing()) {
-            return $conflictClause . ' DO NOTHING';
-        }
-
-        // Handle DO UPDATE
-        $updateFields = $this->state->getDoUpdateFields();
-
-        if (empty($updateFields)) {
-            return '';
-        }
-
-        $setParts = [];
-        foreach ($updateFields as $field => $value) {
-            $quotedField = $this->quoteIdentifier($field);
-
-            if ($value instanceof ExpressionInterface) {
-                $setParts[] = $quotedField . ' = ' . $value->toSql();
-            } else {
-                if ($prepared) {
-                    $this->bindings[] = $value;
-                    $setParts[] = $quotedField . ' = ?';
-                } else {
-                    $formattedValue = $this->formatValue($value);
-                    $setParts[] = $quotedField . ' = ' . $formattedValue;
-                }
-            }
-        }
-
-        return $conflictClause . ' DO UPDATE SET ' . implode(', ', $setParts);
+        return $this->buildOnConflictClause($prepared);
     }
 }
