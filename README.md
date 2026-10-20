@@ -183,6 +183,10 @@ $query->where('name')->notLike(LikePattern::contains('spam'));
 (`LikePattern`); the clause `ESCAPE '!'` is identical on MySQL, MariaDB, PostgreSQL
 and SQLite. Works in `where`/`and`/`or`/`having` and for SELECT, UPDATE and DELETE.
 
+`LikePattern` implements `JardisSupport\Contract\DbQuery\LikePatternInterface` from
+`jardissupport/contracts`: code typed against the contracts interfaces passes it to
+`like()` / `notLike()` without a static-analysis error.
+
 ## Documentation
 
 Full documentation, guides, and API reference:
