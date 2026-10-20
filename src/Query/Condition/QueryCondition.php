@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace JardisSupport\DbQuery\Query\Condition;
 
-use JardisSupport\DbQuery\Data\LikePattern;
 use JardisSupport\DbQuery\Data\QueryConditionCollector;
 use JardisSupport\DbQuery\Factory\BuilderRegistry;
 use JardisSupport\DbQuery\Query\Builder\Condition;
@@ -12,6 +11,7 @@ use JardisSupport\Contract\DbQuery\DbDeleteBuilderInterface;
 use JardisSupport\Contract\DbQuery\DbQueryBuilderInterface;
 use JardisSupport\Contract\DbQuery\DbQueryConditionBuilderInterface;
 use JardisSupport\Contract\DbQuery\DbUpdateBuilderInterface;
+use JardisSupport\Contract\DbQuery\LikePatternInterface;
 
 /**
  * Class QueryCondition
@@ -231,12 +231,12 @@ class QueryCondition implements DbQueryConditionBuilderInterface
     /**
      * Resolves the right-hand side of LIKE / NOT LIKE.
      *
-     * A LikePattern binds its escaped pattern and appends the ESCAPE clause;
+     * A LikePatternInterface (e.g. LikePattern) binds its escaped pattern and appends the ESCAPE clause;
      * every other value keeps the previous behaviour.
      */
     protected function getLikeValue(mixed $value): string
     {
-        if ($value instanceof LikePattern) {
+        if ($value instanceof LikePatternInterface) {
             return $this->getValue($value->pattern()) . $value->escapeClause();
         }
 

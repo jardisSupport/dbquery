@@ -64,6 +64,8 @@ use JardisSupport\DbQuery\Data\LikePattern;
 ->where('f')->like(LikePattern::startsWith($t))         // endsWith($t) / literal($t)
 ->where('f')->notLike(LikePattern::contains($t))
 // same clause on MySQL/MariaDB/PostgreSQL/SQLite; plain ->like('x%') keeps wildcards (caller-owned)
+// LikePattern implements contracts LikePatternInterface (pattern(), escapeClause()): typed against the
+// contracts interfaces, like()/notLike() accept it (phpstan-clean); any implementation of the interface works
 ```
 
 ## CONDITION CHAINING

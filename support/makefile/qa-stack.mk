@@ -16,7 +16,7 @@ phpunit-coverage-html: start ## Run all tests with HTML coverage
 .PHONY: phpunit-coverage-html
 
 phpstan: ## Run PHPStan analysis
-	$(DOCKER_COMPOSE) run --rm --no-deps phpcli vendor/bin/phpstan analyse /app/src -c phpstan.neon
+	$(DOCKER_COMPOSE) run --rm --no-deps phpcli vendor/bin/phpstan analyse /app/src /app/tests/Static -c phpstan.neon
 .PHONY: phpstan
 
 phpcs: ## Run coding standards

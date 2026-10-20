@@ -13,6 +13,11 @@ versioning follows [SemVer](https://semver.org/).
   the escape character are escaped in one place and the condition renders
   `LIKE ? ESCAPE '!'` with the same effect on MySQL, MariaDB, PostgreSQL and SQLite.
   Plain `like('...')` is unchanged.
+  `LikePattern` implements the contract type `JardisSupport\Contract\DbQuery\LikePatternInterface`
+  (`jardissupport/contracts` ^2.14, `pattern()` / `escapeClause()`): callers typed against the
+  contracts interfaces pass `like(LikePattern::contains('x'))` through phpstan, and the condition
+  builders evaluate the interface, so any implementation of it is rendered the same way.
+  `tests/Static/` holds a phpstan-analysed contract-type check (`make phpstan` covers it).
 
 - **Identifier auto-quoting for simple identifiers.** Fields passed to
   `where()`/`and()`/`or()`, `having()`, `orderBy()`, `groupBy()` and the
