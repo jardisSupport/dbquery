@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace JardisSupport\DbQuery\Data;
 
+use JardisSupport\Contract\DbQuery\LikePatternInterface;
+
 /**
  * A LIKE pattern built from a literal search term
  *
@@ -20,8 +22,11 @@ namespace JardisSupport\DbQuery\Data;
  * $query->where('name')->like(LikePattern::startsWith('a_b'));   // a_b%
  * $query->where('name')->notLike(LikePattern::endsWith('x'));    // %x
  * ```
+ *
+ * Implements the contract type `LikePatternInterface`, so callers typed against
+ * `jardissupport/contracts` can pass it to `like()` / `notLike()`.
  */
-final class LikePattern
+final class LikePattern implements LikePatternInterface
 {
     public const ESCAPE = '!';
 

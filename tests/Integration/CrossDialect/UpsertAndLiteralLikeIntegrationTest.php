@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace JardisSupport\DbQuery\Tests\Integration\CrossDialect;
 
 use InvalidArgumentException;
+use JardisSupport\Contract\DbQuery\LikePatternInterface;
 use JardisSupport\DbQuery\Data\LikePattern;
 use JardisSupport\DbQuery\DbInsert;
 use JardisSupport\DbQuery\DbQuery;
@@ -217,5 +218,27 @@ class UpsertAndLiteralLikeIntegrationTest extends TestCase
         $this->assertSame(['5000', 'a_b', 'axb'], $this->names($pdo, $dialect, (new DbQuery())
             ->select('name')->from('users')
             ->where('name')->notLike(LikePattern::contains('50%'))));
+    }
+
+    #[DataProvider('dialects')]
+    public function testAnyLikePatternInterfaceImplementationSearchesLiterally(string $dialect): void
+    {
+        $pdo = $this->prepareTable($dialect);
+        $this->seedNames($pdo, ['50%', '5000', 'a_b', 'axb']);
+        $foreign = new class implements LikePatternInterface {
+            public function pattern(): string
+            {
+                return '50#%%';
+            }
+
+            public function escapeClause(): string
+            {
+                return " ESCAPE '#'";
+            }
+        };
+
+        $this->assertSame(['50%'], $this->names($pdo, $dialect, (new DbQuery())
+            ->select('name')->from('users')
+            ->where('name')->like($foreign)));
     }
 }
