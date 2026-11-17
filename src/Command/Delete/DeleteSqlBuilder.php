@@ -33,6 +33,11 @@ abstract class DeleteSqlBuilder
     protected QueryConditionCollector $collector;
     /** @var array<int|string, mixed> */
     protected array $bindings;
+    /**
+     * Position in $bindings of the first binding not yet resolved - the WHERE conditions' own bindings
+     * start here and every condition (and EXISTS subquery) moves it behind what it consumed.
+     */
+    protected int $bindingCursor = 0;
     protected string $dialect;
     protected BuilderRegistry $registry;
 
@@ -60,11 +65,16 @@ abstract class DeleteSqlBuilder
         $this->state = $state;
         $this->collector = $collector;
 
-        // Initialize bindings from WHERE conditions
-        $this->bindings = $collector->bindings();
+        // Bindings follow the SQL: JOIN subqueries first, then the WHERE conditions' own,
+        // which WHERE resolves its subqueries from
+        $this->bindings = [];
 
         $delete = $this->buildDelete();
         $joins = $this->buildJoins($prepared);
+
+        $this->bindingCursor = count($this->bindings);
+        $this->bindings = array_merge($this->bindings, $collector->bindings());
+
         $where = $this->buildWhere($prepared);
         $order = $this->buildOrderBy();
         $limit = $this->buildLimit();
@@ -146,7 +156,8 @@ abstract class DeleteSqlBuilder
             fn(string $cond) => $this->processJsonPlaceholders($cond),
             fn(string $cond) => $this->replaceSubqueryPlaceholders($cond),
             fn(string $cond) => $this->quoteMarkedIdentifiers($cond),
-            $this->bindings
+            $this->bindings,
+            $this->bindingCursor
         );
     }
 
@@ -242,15 +253,24 @@ abstract class DeleteSqlBuilder
     }
 
     /**
-     * Replace subquery placeholders in conditions
+     * Replace subquery placeholders in conditions (prepared mode, called by ConditionBuilder)
+     *
+     * The condition's bindings start at $this->bindingCursor, which moves behind them.
      *
      * @param string $condition
      * @return string
      */
     protected function replaceSubqueryPlaceholders(string $condition): string
     {
-        // Subquery placeholders are handled by ConditionBuilder
-        return $condition;
+        /** @var PlaceholderReplacer $replacer */
+        $replacer = $this->registry->get(PlaceholderReplacer::class);
+
+        return $replacer->replaceSubqueries(
+            $condition,
+            $this->bindings,
+            $this->dialect,
+            $this->bindingCursor
+        );
     }
 
     /**

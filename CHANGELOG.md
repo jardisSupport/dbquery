@@ -4,6 +4,25 @@ All notable changes to `jardissupport/dbquery` are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 versioning follows [SemVer](https://semver.org/).
 
+## [1.3.1] - 2026-11-18
+
+### Fixed
+
+- **A subquery used as a value or operand is now rendered and bound at its own place in prepared
+  mode - in every condition, not only the first.** Subquery placeholders were resolved from the
+  start of the statement's binding list for every condition, so
+  `where('tenant')->equals('t1')->and('id')->in($sub)` and
+  `->and(Expression::integer(1))->equals($sub)` left `IN ?` / `= ?` in the SQL with the `DbQuery`
+  object as binding. Conditions now resolve their subqueries from their own position in the
+  bindings, in placeholder order: later conditions, `or`, bracket groups, `having`, two or more
+  subqueries in one statement, nested subqueries and `exists()` / `notExists()` in the middle of a
+  statement (their bindings were appended at the end) - on MySQL, MariaDB, PostgreSQL and SQLite.
+- **`DbDelete` and `DbUpdate` inline subqueries in `WHERE` in prepared mode** (they left `IN ?`
+  with a `DbQuery` object as binding), and `DbDelete` binds JOIN subqueries before the `WHERE`
+  bindings, as they stand in the SQL.
+- **Binding order with a CTE and a SELECT subquery in one query**: the SELECT subquery's bindings
+  were placed before the CTE's bindings although the CTE stands first in the SQL.
+
 ## [1.3.0] - 2026-11-17
 
 ### Added
