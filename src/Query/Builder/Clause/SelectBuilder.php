@@ -56,9 +56,10 @@ class SelectBuilder
                 }
             }
 
-            // Insert SELECT subquery bindings BEFORE main query bindings
+            // Bindings follow the SQL: the SELECT list stands behind the CTEs already collected
+            // and before FROM, JOIN and the main query conditions, which are added after it
             if (!empty($selectSubqueryBindings)) {
-                $bindings = array_merge($selectSubqueryBindings, $bindings);
+                $bindings = array_merge($bindings, $selectSubqueryBindings);
             }
         }
 

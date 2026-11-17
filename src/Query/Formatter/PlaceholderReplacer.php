@@ -59,17 +59,25 @@ class PlaceholderReplacer
      * This method identifies subquery bindings, extracts their SQL and bindings,
      * and merges everything correctly.
      *
+     * $bindings holds the bindings of a whole statement, in placeholder order. The condition
+     * owns the bindings starting at $cursor, one per `?`; bindings before $cursor belong to
+     * earlier parts of the statement and stay untouched, bindings after the condition's own
+     * stay behind its (possibly expanded) bindings. On return $cursor points at the first
+     * binding after this condition, ready for the next condition of the same statement.
+     *
      * @param string $condition The condition string with ? placeholders
      * @param array<int|string, mixed> &$bindings Reference to bindings array (modified in place)
      * @param string $dialect The SQL dialect (mysql, postgres, sqlite)
+     * @param int &$cursor Index of the first binding owned by this condition; advanced past it
      * @return string The condition with subquery placeholders replaced
      */
     public function replaceSubqueries(
         string $condition,
         array &$bindings,
-        string $dialect
+        string $dialect,
+        int &$cursor = 0
     ): string {
-        $bindingIndex = 0;
+        $bindingIndex = $cursor;
         $newBindings = [];
 
         $result = preg_replace_callback(
@@ -100,8 +108,13 @@ class PlaceholderReplacer
             $condition
         );
 
-        // Update bindings array with processed bindings
-        $bindings = array_merge($newBindings, array_slice($bindings, $bindingIndex));
+        // Splice the processed bindings back in between the untouched ones
+        $bindings = array_merge(
+            array_slice($bindings, 0, $cursor),
+            $newBindings,
+            array_slice($bindings, $bindingIndex)
+        );
+        $cursor += count($newBindings);
 
         return $result ?? $condition;
     }

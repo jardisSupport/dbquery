@@ -412,7 +412,10 @@ class DbDeleteMySqlTest extends TestCase
             ->sql('mysql', true);
 
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $result);
-        $expected = "DELETE FROM `users` WHERE `id` IN ?";
+        // Prepared mode inlines the subquery: "IN ?" with a DbQuery object as binding is not executable SQL
+        // (the former expectation pinned that defect; README/skill document where(...)->in($sub)).
+        $expected = "DELETE FROM `users` WHERE `id` IN (SELECT `user_id` FROM `banned_users`)";
         $this->assertEquals($expected, $result->sql());
+        $this->assertSame([], $result->bindings());
     }
 }

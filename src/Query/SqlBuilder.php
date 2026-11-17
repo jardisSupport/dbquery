@@ -38,6 +38,11 @@ class SqlBuilder
     protected QueryConditionCollector $collector;
     /** @var array<int|string, mixed> */
     protected array $bindings;
+    /**
+     * Position in $bindings of the first binding not yet resolved - the conditions' own bindings
+     * start here and every condition (and EXISTS subquery) moves it behind what it consumed.
+     */
+    protected int $bindingCursor = 0;
     protected string $dialect;
     protected BuilderRegistry $registry;
 
@@ -74,7 +79,9 @@ class SqlBuilder
         $from   = $this->buildFrom($prepared);
         $joins  = $this->buildJoins($prepared);
 
-        // Merge main query bindings after all structural elements (CTE, SELECT, FROM, JOIN)
+        // Merge main query bindings after all structural elements (CTE, SELECT, FROM, JOIN);
+        // WHERE and HAVING resolve their subqueries from the first of them on
+        $this->bindingCursor = count($this->bindings);
         $this->bindings = array_merge($this->bindings, $mainQueryBindings);
 
         $where  = $this->buildWhere($prepared);
@@ -226,7 +233,8 @@ class SqlBuilder
             fn(string $cond) => $this->processJsonPlaceholders($cond),
             fn(string $cond) => $this->replaceSubqueryPlaceholders($cond),
             fn(string $cond) => $this->quoteMarkedIdentifiers($cond),
-            $this->bindings
+            $this->bindings,
+            $this->bindingCursor
         );
     }
 
@@ -424,6 +432,8 @@ class SqlBuilder
     /**
      * Replaces subquery placeholders with actual subquery SQL in prepared mode
      *
+     * The condition's bindings start at $this->bindingCursor, which moves behind them.
+     *
      * @param string $condition The condition string with ? placeholders
      * @return string The condition with subquery placeholders replaced
      */
@@ -435,7 +445,8 @@ class SqlBuilder
         return $replacer->replaceSubqueries(
             $condition,
             $this->bindings,
-            $this->dialect
+            $this->dialect,
+            $this->bindingCursor
         );
     }
 
