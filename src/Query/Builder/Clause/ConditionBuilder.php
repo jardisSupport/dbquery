@@ -32,6 +32,10 @@ class ConditionBuilder
      * @param callable $quoteMarkedIdentifiers Callback to replace identifier markers with
      *        dialect-quoted identifiers: fn(string): string
      * @param array<int|string, mixed> &$bindings Reference to bindings array (modified in place)
+     * @param int|null &$cursor Index in $bindings of the first binding owned by these conditions. It is the
+     *        same position the $replaceSubqueryPlaceholders callback works from and advances; the bindings
+     *        of an EXISTS subquery are spliced in at this position, in the order they stand in the SQL.
+     *        Without a cursor (null) they are appended to $bindings.
      * @return string The processed conditions string
      */
     public function __invoke(
@@ -41,7 +45,8 @@ class ConditionBuilder
         callable $processJsonPlaceholders,
         callable $replaceSubqueryPlaceholders,
         callable $quoteMarkedIdentifiers,
-        array &$bindings
+        array &$bindings,
+        ?int &$cursor = null
     ): string {
         $result = '';
 
@@ -66,7 +71,7 @@ class ConditionBuilder
                         $processedConditions[] = $prefix . $condition['type'] . ' ('
                             . $subResult->sql() . ')'
                             . ($condition['closeBracket'] ?? '');
-                        $bindings = array_merge($bindings, $subResult->bindings());
+                        $this->spliceBindings($bindings, $subResult->bindings(), $cursor);
                     } else {
                         /** @phpstan-ignore binaryOp.invalid */
                         $processedConditions[] = $prefix . $condition['type'] . ' ('
@@ -79,5 +84,24 @@ class ConditionBuilder
         }
 
         return $result;
+    }
+
+    /**
+     * Inserts bindings at the cursor (and moves the cursor behind them), or appends without a cursor
+     *
+     * @param array<int|string, mixed> &$bindings Bindings of the whole statement
+     * @param array<int|string, mixed> $insert Bindings to insert
+     * @param int|null &$cursor Insert position; null appends
+     */
+    private function spliceBindings(array &$bindings, array $insert, ?int &$cursor): void
+    {
+        if ($cursor === null) {
+            $bindings = array_merge($bindings, $insert);
+
+            return;
+        }
+
+        array_splice($bindings, $cursor, 0, array_values($insert));
+        $cursor += count($insert);
     }
 }

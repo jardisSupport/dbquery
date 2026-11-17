@@ -424,4 +424,79 @@ class PlaceholderReplacerTest extends TestCase
 
         $this->assertSame("SELECT * FROM users WHERE comment = 'O\\'Reilly & Sons'", $result);
     }
+
+    private function subqueryReturning(string $sql, array $bindings): DbQueryBuilderInterface
+    {
+        $prepared = $this->createMock(DbPreparedQueryInterface::class);
+        $prepared->method('sql')->willReturn($sql);
+        $prepared->method('bindings')->willReturn($bindings);
+
+        $subquery = $this->createMock(DbQueryBuilderInterface::class);
+        $subquery->method('sql')->willReturn($prepared);
+
+        return $subquery;
+    }
+
+    /**
+     * @test
+     * @group unit
+     * @group support
+     * @group formatter
+     */
+    public function replaceSubqueries_withCursor_leavesEarlierBindingsUntouchedAndAdvancesTheCursor(): void
+    {
+        // Statement bindings: [structural, own1, own2, later] - the condition owns own1 and own2
+        $subquery = $this->subqueryReturning('SELECT id FROM s WHERE k = ? AND j = ?', ['k', 'j']);
+        $bindings = ['structural', 'own1', $subquery, 'later'];
+        $cursor = 1;
+
+        $result = $this->replacer->replaceSubqueries('a = ? AND b IN ?', $bindings, 'mysql', $cursor);
+
+        $this->assertSame('a = ? AND b IN (SELECT id FROM s WHERE k = ? AND j = ?)', $result);
+        $this->assertSame(['structural', 'own1', 'k', 'j', 'later'], $bindings);
+        $this->assertSame(4, $cursor);
+    }
+
+    /**
+     * @test
+     * @group unit
+     * @group support
+     * @group formatter
+     */
+    public function replaceSubqueries_calledPerConditionWithTheCursor_resolvesEverySubqueryAtItsPlace(): void
+    {
+        $first = $this->subqueryReturning('SELECT 1 WHERE a = ?', ['first']);
+        $second = $this->subqueryReturning('SELECT 2 WHERE b = ?', ['second']);
+        $bindings = ['t1', $first, 'mid', $second, 'end'];
+        $cursor = 0;
+
+        $one = $this->replacer->replaceSubqueries(' WHERE tenant = ?', $bindings, 'mysql', $cursor);
+        $two = $this->replacer->replaceSubqueries(' AND id IN ?', $bindings, 'mysql', $cursor);
+        $three = $this->replacer->replaceSubqueries(' AND m = ? AND o = ?', $bindings, 'mysql', $cursor);
+        $four = $this->replacer->replaceSubqueries(' AND e = ?', $bindings, 'mysql', $cursor);
+
+        $this->assertSame(' WHERE tenant = ?', $one);
+        $this->assertSame(' AND id IN (SELECT 1 WHERE a = ?)', $two);
+        $this->assertSame(' AND m = ? AND o = (SELECT 2 WHERE b = ?)', $three);
+        $this->assertSame(' AND e = ?', $four);
+        $this->assertSame(['t1', 'first', 'mid', 'second', 'end'], $bindings);
+        $this->assertSame(5, $cursor);
+    }
+
+    /**
+     * @test
+     * @group unit
+     * @group support
+     * @group formatter
+     */
+    public function replaceSubqueries_withoutCursor_startsAtTheFirstBindingAsBefore(): void
+    {
+        $subquery = $this->subqueryReturning('SELECT 1 WHERE a = ?', ['x']);
+        $bindings = [$subquery, 'rest'];
+
+        $result = $this->replacer->replaceSubqueries('id IN ? AND z = ?', $bindings, 'mysql');
+
+        $this->assertSame('id IN (SELECT 1 WHERE a = ?) AND z = ?', $result);
+        $this->assertSame(['x', 'rest'], $bindings);
+    }
 }

@@ -66,9 +66,9 @@ class CteBuilder
             }
         }
 
-        // Insert CTE bindings BEFORE main query bindings
+        // Bindings follow the SQL: CTEs stand first, everything else is added after them
         if (!empty($cteBindings)) {
-            $bindings = array_merge($cteBindings, $bindings);
+            $bindings = array_merge($bindings, $cteBindings);
         }
 
         $prefix = $isRecursive ? 'WITH RECURSIVE ' : 'WITH ';

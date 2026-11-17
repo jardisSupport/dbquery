@@ -386,8 +386,11 @@ class DbDeletePostgresTest extends TestCase
             ->sql('postgres', true);
 
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $result);
-        $expected = 'DELETE FROM "users" WHERE "id" IN ?';
+        // Prepared mode inlines the subquery: "IN ?" with a DbQuery object as binding is not executable SQL
+        // (the former expectation pinned that defect; README/skill document where(...)->in($sub)).
+        $expected = 'DELETE FROM "users" WHERE "id" IN (SELECT "user_id" FROM "banned_users")';
         $this->assertEquals($expected, $result->sql());
+        $this->assertSame([], $result->bindings());
     }
 
     public function testDeleteWithNotInSubquery(): void
@@ -403,7 +406,10 @@ class DbDeletePostgresTest extends TestCase
             ->sql('postgres', true);
 
         $this->assertInstanceOf(DbPreparedQueryInterface::class, $result);
-        $expected = 'DELETE FROM "users" WHERE "id" NOT IN ?';
+        // Prepared mode inlines the subquery: "IN ?" with a DbQuery object as binding is not executable SQL
+        // (the former expectation pinned that defect; README/skill document where(...)->in($sub)).
+        $expected = 'DELETE FROM "users" WHERE "id" NOT IN (SELECT "user_id" FROM "active_users")';
         $this->assertEquals($expected, $result->sql());
+        $this->assertSame([], $result->bindings());
     }
 }
