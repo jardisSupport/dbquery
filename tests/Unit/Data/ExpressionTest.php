@@ -272,4 +272,60 @@ class ExpressionTest extends TestCase
 
         $this->assertEquals('city = "北京"', $expression->toSql());
     }
+
+    // ==================== Typed factories ====================
+
+    public function testIntegerRendersDecimalLiteral(): void
+    {
+        $this->assertInstanceOf(ExpressionInterface::class, Expression::integer(1));
+        $this->assertSame('1', Expression::integer(1)->toSql());
+        $this->assertSame('0', Expression::integer(0)->toSql());
+        $this->assertSame('-42', Expression::integer(-42)->toSql());
+        $this->assertSame((string) PHP_INT_MAX, Expression::integer(PHP_INT_MAX)->toSql());
+    }
+
+    public function testColumnReturnsMarkedIdentifier(): void
+    {
+        $this->assertInstanceOf(ExpressionInterface::class, Expression::column('id'));
+        $this->assertSame("\x01ID:id\x01", Expression::column('id')->toSql());
+        $this->assertSame("\x01ID:u.id\x01", Expression::column('u.id')->toSql());
+        $this->assertSame("\x01ID:_a1.b_2\x01", Expression::column('_a1.b_2')->toSql());
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function invalidColumnProvider(): array
+    {
+        return [
+            'empty' => [''],
+            'star' => ['*'],
+            'qualified star' => ['u.*'],
+            'function' => ['LOWER(name)'],
+            'whitespace' => ['a b'],
+            'trailing space' => ['id '],
+            'newline' => ["id\n"],
+            'already quoted' => ['`id`'],
+            'three parts' => ['a.b.c'],
+            'leading digit' => ['1id'],
+            'operator' => ['a-b'],
+            'comment' => ['id--x'],
+            'injection' => ['id; DROP TABLE users'],
+            'marker char' => ["\x01ID:id\x01"],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidColumnProvider')]
+    public function testColumnThrowsForValueOutsideSimpleIdentifierPattern(string $value): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        Expression::column($value);
+    }
+
+    public function testRawAndConstructorStayUnchanged(): void
+    {
+        $this->assertSame('id', Expression::raw('id')->toSql());
+        $this->assertSame('u.id', (new Expression('u.id'))->toSql());
+    }
 }

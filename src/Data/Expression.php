@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace JardisSupport\DbQuery\Data;
 
+use InvalidArgumentException;
 use JardisSupport\Contract\DbQuery\ExpressionInterface;
+use JardisSupport\DbQuery\Query\Formatter\IdentifierMarkerReplacer;
+use JardisSupport\DbQuery\Query\Formatter\SimpleIdentifierQuoter;
 
 /**
  * Represents a raw SQL expression that should not be escaped or quoted
@@ -26,6 +29,10 @@ use JardisSupport\Contract\DbQuery\ExpressionInterface;
  *
  * // Or via constructor
  * $query->where('price')->greater(new Expression('cost'));
+ *
+ * // Typed factories (no raw text): integer literal and dialect-quoted column
+ * $query->where(Expression::integer(1))->equals($subQuery);
+ * $query->where('o.user_id')->equals(Expression::column('u.id'));
  * ```
  */
 class Expression implements ExpressionInterface
@@ -61,6 +68,53 @@ class Expression implements ExpressionInterface
     public static function raw(string $sql): self
     {
         return new self($sql);
+    }
+
+    /**
+     * Create an integer literal expression (static factory method)
+     *
+     * The integer is rendered as a decimal literal, never as a binding and
+     * never quoted. Typed alternative to `Expression::raw('1')`, e.g. as the
+     * left side of a single-value condition:
+     * `where(Expression::integer(1))->equals($subQuery)`.
+     *
+     * @param int $value The integer literal
+     * @return self A new Expression instance
+     */
+    public static function integer(int $value): self
+    {
+        return new self((string) $value);
+    }
+
+    /**
+     * Create a column reference expression (static factory method)
+     *
+     * The column is quoted dialect-specifically at build time (MySQL/MariaDB/
+     * SQLite: backtick, PostgreSQL: double quote), on the left side of a
+     * condition as well as on the right side of its operator. Accepts only a
+     * simple identifier (`ident` or `alias.ident`, see
+     * SimpleIdentifierQuoter::PATTERN); anything else throws.
+     *
+     * Intended for WHERE/AND/OR/HAVING conditions: toSql() returns the column
+     * wrapped in an identifier marker (see IdentifierMarkerReplacer), which the
+     * SQL builders replace with the quoted identifier when the condition is
+     * built. Use `Expression::raw()` for any other usage of an Expression.
+     *
+     * @param string $identifier Simple identifier, e.g. `id` or `u.id`
+     * @return self A new Expression instance
+     * @throws InvalidArgumentException If the value is not a simple identifier
+     */
+    public static function column(string $identifier): self
+    {
+        // Modifier D: a plain `$` would also accept a trailing newline
+        if (preg_match(SimpleIdentifierQuoter::PATTERN . 'D', $identifier) !== 1) {
+            throw new InvalidArgumentException(
+                'Expression::column() accepts only a simple identifier (ident or alias.ident), got: '
+                . $identifier
+            );
+        }
+
+        return new self(IdentifierMarkerReplacer::PREFIX . $identifier . IdentifierMarkerReplacer::SUFFIX);
     }
 
     /**

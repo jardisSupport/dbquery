@@ -4,7 +4,23 @@ All notable changes to `jardissupport/dbquery` are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 versioning follows [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [1.3.0] - 2026-11-17
+
+### Added
+
+- **`Expression::integer(int)` and `Expression::column(string)` - typed expressions.**
+  `Expression::integer(1)` renders the integer literal (never a binding);
+  `Expression::column('u.id')` renders a column reference that is quoted per
+  dialect (backtick for MySQL/MariaDB/SQLite, double quote for PostgreSQL), on the
+  left side of a condition as well as on the right side of its operator. `column()`
+  accepts only a simple identifier (`ident` or `alias.ident`,
+  `SimpleIdentifierQuoter::PATTERN`); any other value throws `InvalidArgumentException`.
+  `raw()` and the constructor are unchanged. Single-value form without raw text:
+  `where(Expression::integer(1))->equals($subQuery)`, with the subquery correlated via
+  `->where('o.user_id')->equals(Expression::column('u.id'))->limit(1)`. The signature of
+  `where()` is unchanged.
+
+## [1.2.0] - 2026-10-20
 
 ### Added
 

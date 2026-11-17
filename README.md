@@ -95,6 +95,35 @@ all-lowercase when the DDL was unquoted. Declare aliases with an explicit `AS`
 (`COUNT(*) AS orderCount`) so alias definition and alias references are quoted
 consistently; use `Expression::raw()` where the raw string is required.
 
+## Typed Expressions (`Expression::integer` / `Expression::column`)
+
+Two typed factories on `Expression` replace raw text where a literal or a column
+reference is needed:
+
+- `Expression::integer(1)` renders the integer literal `1` (no binding, not quoted).
+- `Expression::column('u.id')` renders a column reference quoted per dialect, on the
+  left side of a condition and on the right side of its operator. Only a simple
+  identifier (`ident` or `alias.ident`) is accepted; anything else throws
+  `InvalidArgumentException`. Use `Expression::raw()` for everything else.
+
+Single-value condition against a correlated subquery (users with at least one order):
+
+```php
+use JardisSupport\DbQuery\Data\Expression;
+
+$sub = (new DbQuery())
+    ->select('1')
+    ->from('orders', 'o')
+    ->where('o.user_id')->equals(Expression::column('u.id'))
+    ->limit(1);
+
+$query = (new DbQuery())
+    ->select('u.email')
+    ->from('users', 'u')
+    ->where(Expression::integer(1))->equals($sub);
+// ... WHERE 1 = (SELECT 1 FROM `orders` `o` WHERE `o`.`user_id` = `u`.`id` LIMIT 1)
+```
+
 ## Advanced Usage
 
 ```php
