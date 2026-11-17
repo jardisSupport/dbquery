@@ -561,4 +561,81 @@ class DbQueryMySqlWhereTest extends TestCase
         );
         $this->assertEquals([0, 100, 1], $prepared->bindings());
     }
+
+    // ==================== Typed expressions (Expression::integer / ::column) ====================
+
+    public function testWhereSingleValueConditionWithCorrelatedSubquery(): void
+    {
+        $sub = (new DbQuery())
+            ->select('1')
+            ->from('orders', 'o')
+            ->where('o.user_id')->equals(Expression::column('u.id'))
+            ->limit(1);
+
+        $query = (new DbQuery())
+            ->select('u.id')
+            ->from('users', 'u')
+            ->where(Expression::integer(1))->equals($sub);
+
+        $sql = $query->sql('mysql', false);
+        $this->assertIsString($sql);
+        $this->assertEquals(
+            'SELECT `u`.`id` FROM `users` `u` WHERE 1 = '
+            . '(SELECT 1 FROM `orders` `o` WHERE `o`.`user_id` = `u`.`id` LIMIT 1)',
+            $sql
+        );
+
+        $prepared = $query->sql('mysql', true);
+        $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
+        $this->assertEquals(
+            'SELECT `u`.`id` FROM `users` `u` WHERE 1 = '
+            . '(SELECT 1 FROM `orders` `o` WHERE `o`.`user_id` = `u`.`id` LIMIT 1)',
+            $prepared->sql()
+        );
+        $this->assertSame([], $prepared->bindings());
+    }
+
+    public function testWhereColumnExpressionOnTheRightSideIsQuoted(): void
+    {
+        $query = (new DbQuery())
+            ->select('*')
+            ->from('products')
+            ->where('price')->greater(Expression::column('cost'));
+
+        $this->assertEquals(
+            'SELECT * FROM `products` WHERE `price` > `cost`',
+            $query->sql('mysql', false)
+        );
+        $prepared = $query->sql('mysql', true);
+        $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
+        $this->assertEquals('SELECT * FROM `products` WHERE `price` > `cost`', $prepared->sql());
+        $this->assertSame([], $prepared->bindings());
+    }
+
+    public function testWhereColumnExpressionOnTheLeftSideIsQuoted(): void
+    {
+        $query = (new DbQuery())
+            ->select('*')
+            ->from('orders', 'o')
+            ->where(Expression::column('o.total'))->greater(10);
+
+        $this->assertEquals(
+            'SELECT * FROM `orders` `o` WHERE `o`.`total` > 10',
+            $query->sql('mysql', false)
+        );
+    }
+
+    public function testWhereIntegerExpressionOnTheLeftSideEqualsValue(): void
+    {
+        $query = (new DbQuery())
+            ->select('*')
+            ->from('users')
+            ->where(Expression::integer(1))->equals(1);
+
+        $this->assertEquals('SELECT * FROM `users` WHERE 1 = 1', $query->sql('mysql', false));
+        $prepared = $query->sql('mysql', true);
+        $this->assertInstanceOf(DbPreparedQueryInterface::class, $prepared);
+        $this->assertEquals('SELECT * FROM `users` WHERE 1 = ?', $prepared->sql());
+        $this->assertSame([1], $prepared->bindings());
+    }
 }

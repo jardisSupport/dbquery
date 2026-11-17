@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace JardisSupport\DbQuery\Tests\Integration\Mysql;
 
+use JardisSupport\Contract\DbQuery\DbPreparedQueryInterface;
+use JardisSupport\DbQuery\Data\Expression;
 use JardisSupport\DbQuery\DbQuery;
 use JardisSupport\DbQuery\Tests\Integration\DatabaseConnection;
 use PDO;
@@ -377,5 +379,114 @@ class DbQueryMySqlIntegrationTest extends TestCase
         $this->assertEquals(27.67, round((float)$result['avg_age'], 2));
         $this->assertEquals(25, (int)$result['min_age']);
         $this->assertEquals(30, (int)$result['max_age']);
+    }
+
+    // ==================== Typed expressions (Expression::integer / ::column) ====================
+
+    /**
+     * Seeds orders: John 0, Jane 1, Bob 3, Alice 0 orders.
+     *
+     * @return array<string, int> user id by e-mail
+     */
+    private function seedOrdersPerUser(): array
+    {
+        $ids = [];
+        foreach ($this->connection->query('SELECT id, email FROM users')->fetchAll() as $row) {
+            $ids[(string) $row['email']] = (int) $row['id'];
+        }
+
+        $this->db->createOrdersTable($this->connection, 'mysql', 'orders');
+        $this->db->insertTestData($this->connection, 'orders', [
+            ['user_id' => $ids['jane@example.com'], 'product' => 'A', 'amount' => 10.00],
+            ['user_id' => $ids['bob@example.com'], 'product' => 'B', 'amount' => 20.00],
+            ['user_id' => $ids['bob@example.com'], 'product' => 'C', 'amount' => 30.00],
+            ['user_id' => $ids['bob@example.com'], 'product' => 'D', 'amount' => 40.00],
+        ]);
+
+        return $ids;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function fetchEmails(DbPreparedQueryInterface $prepared): array
+    {
+        $stmt = $this->connection->prepare($prepared->sql());
+        $stmt->execute($prepared->bindings());
+
+        return array_map(static fn(array $row): string => (string) $row['email'], $stmt->fetchAll());
+    }
+
+    public function testSingleValueConditionWithCorrelatedSubqueryReturnsEachMatchingRowOnce(): void
+    {
+        $this->seedOrdersPerUser();
+
+        try {
+            // rows with 0, 1 and 3 hits in orders: only rows with a hit, each once
+            $sub = (new DbQuery())
+                ->select('1')
+                ->from('orders', 'o')
+                ->where('o.user_id')->equals(Expression::column('u.id'))
+                ->limit(1);
+
+            $prepared = (new DbQuery())
+                ->select('u.email')
+                ->from('users', 'u')
+                ->where(Expression::integer(1))->equals($sub)
+                ->orderBy('u.id')
+                ->sql('mysql');
+
+            $this->assertSame(['jane@example.com', 'bob@example.com'], $this->fetchEmails($prepared));
+        } finally {
+            $this->db->dropTestTable($this->connection, 'orders');
+        }
+    }
+
+    public function testColumnExpressionIsQuotedOnBothSidesOfTheOperator(): void
+    {
+        $this->seedOrdersPerUser();
+
+        try {
+            // "order" is a reserved word in every dialect: only quoted identifiers run
+            $sub = (new DbQuery())
+                ->select('1')
+                ->from('orders', 'o')
+                ->where('o.user_id')->equals(Expression::column('order.id'))
+                ->limit(1);
+
+            $prepared = (new DbQuery())
+                ->select('order.email')
+                ->from('users', 'order')
+                ->where(Expression::integer(1))->equals($sub)
+                ->orderBy('order.id')
+                ->sql('mysql');
+
+            $this->assertSame(['jane@example.com', 'bob@example.com'], $this->fetchEmails($prepared));
+        } finally {
+            $this->db->dropTestTable($this->connection, 'orders');
+        }
+    }
+
+    public function testInSubqueryPreparedReturnsExpectedKeys(): void
+    {
+        $this->seedOrdersPerUser();
+
+        try {
+            $sub = (new DbQuery())
+                ->select('user_id')
+                ->from('orders')
+                ->where('amount')->greaterEquals(10);
+
+            $prepared = (new DbQuery())
+                ->select('email')
+                ->from('users')
+                ->where('id')->in($sub)
+                ->orderBy('id')
+                ->sql('mysql');
+
+            $this->assertSame(['jane@example.com', 'bob@example.com'], $this->fetchEmails($prepared));
+        } finally {
+            $this->db->dropTestTable($this->connection, 'orders');
+        }
     }
 }
