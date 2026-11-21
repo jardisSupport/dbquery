@@ -7,6 +7,7 @@ namespace JardisSupport\DbQuery\Tests\Unit\Query\Postgres;
 use JardisSupport\DbQuery\DbQuery;
 use JardisSupport\Contract\DbQuery\DbPreparedQueryInterface;
 use JardisSupport\Contract\DbQuery\DbQueryBuilderInterface;
+use JardisSupport\DbQuery\Tests\Support\ChainQueryUnitTests;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -30,6 +31,13 @@ use PHPUnit\Framework\TestCase;
  */
 class DbQueryPostgresCteTest extends TestCase
 {
+    use ChainQueryUnitTests;
+
+    protected function chainDialect(): string
+    {
+        return 'postgres';
+    }
+
     public function testWithSingleCte(): void
     {
         $cte = (new DbQuery())
