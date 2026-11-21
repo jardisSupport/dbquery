@@ -8,6 +8,7 @@ use JardisSupport\DbQuery\DbQuery;
 use JardisSupport\DbQuery\Data\Expression;
 use JardisSupport\Contract\DbQuery\DbPreparedQueryInterface;
 use JardisSupport\Contract\DbQuery\DbQueryBuilderInterface;
+use JardisSupport\DbQuery\Tests\Support\ChainQueryUnitTests;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -30,6 +31,13 @@ use PHPUnit\Framework\TestCase;
  */
 class DbQueryMySqlCteTest extends TestCase
 {
+    use ChainQueryUnitTests;
+
+    protected function chainDialect(): string
+    {
+        return 'mysql';
+    }
+
     public function testWithSingleCte(): void
     {
         $cte = (new DbQuery())
