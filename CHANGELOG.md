@@ -4,6 +4,23 @@ All notable changes to `jardissupport/dbquery` are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 versioning follows [SemVer](https://semver.org/).
 
+## [1.3.2] - Unreleased
+
+### Added
+
+- **Tests only, no change to `src/`: the recursive "chain" query form is proven on MySQL, MariaDB,
+  PostgreSQL and SQLite.** `WITH RECURSIVE chain AS (anchor UNION step)` with the step joined to the
+  CTE name, `key IN (SELECT node FROM chain)` on the outer query with a join on a real table and
+  `GROUP BY`, a correlated `EXISTS` subquery behind it, the whole query as `from($q, 'matching')` under
+  `COUNT(*)` and as `select('1')->limit(n)` probe. Pinned: `bindings()` in placeholder order (anchor,
+  step depth limit and condition, outer condition, `EXISTS`), `UNION` (never `UNION ALL`) plus a depth
+  limit ends on a cycle in the data, the CTE name is quoted the same way in `WITH`, `JOIN` and `FROM`.
+- Documented server limits for deep chains (tests pin them): MySQL aborts a recursive query after 1001
+  iterations (`cte_max_recursion_depth` 1000, error 3636); MariaDB (`max_recursive_iterations` 1000)
+  stops silently at 1001 rows without an error; PostgreSQL and SQLite have no such limit. A depth limit
+  up to 999 is safe on all four. Bind the depth limit as an integer: on SQLite a limit bound as text
+  never stops the chain.
+
 ## [1.3.1] - 2026-11-18
 
 ### Fixed
