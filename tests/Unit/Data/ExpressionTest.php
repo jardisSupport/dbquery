@@ -328,4 +328,48 @@ class ExpressionTest extends TestCase
         $this->assertSame('id', Expression::raw('id')->toSql());
         $this->assertSame('u.id', (new Expression('u.id'))->toSql());
     }
+
+    // ==================== joinOn (column pairs for a JOIN ON condition) ====================
+
+    public function testJoinOnReturnsMarkedPairString(): void
+    {
+        $this->assertSame(
+            "\x01ID:group.id\x01 = \x01ID:user.groupId\x01",
+            Expression::joinOn([['group.id', 'user.groupId']])
+        );
+        $this->assertSame(
+            "\x01ID:a.x\x01 = \x01ID:b.y\x01 AND \x01ID:a.z\x01 = \x01ID:b.w\x01",
+            Expression::joinOn([['a.x', 'b.y'], ['a.z', 'b.w']])
+        );
+    }
+
+    /**
+     * @return array<string, array{array<int, mixed>}>
+     */
+    public static function invalidJoinOnProvider(): array
+    {
+        return [
+            'empty list' => [[]],
+            'pair is a string' => [['a.x = b.y']],
+            'pair with one side' => [[['a.x']]],
+            'pair with three sides' => [[['a.x', 'b.y', 'c.z']]],
+            'pair with non-string side' => [[['a.x', 5]]],
+            'pair with named keys' => [[['left' => 'a.x', 'right' => 'b.y']]],
+            'side is an expression' => [[['LOWER(a.x)', 'b.y']]],
+            'right side is not a simple identifier' => [[['a.x', 'b.y OR 1=1']]],
+            'second pair is invalid' => [[['a.x', 'b.y'], ['a.z', '*']]],
+            'side already quoted' => [[['`a`.x', 'b.y']]],
+        ];
+    }
+
+    /**
+     * @param array<int, mixed> $pairs
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidJoinOnProvider')]
+    public function testJoinOnThrowsForInvalidPairs(array $pairs): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        Expression::joinOn($pairs);
+    }
 }
