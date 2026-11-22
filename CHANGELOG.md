@@ -4,6 +4,22 @@ All notable changes to `jardissupport/dbquery` are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 versioning follows [SemVer](https://semver.org/).
 
+## [1.4.0] - Unreleased
+
+### Added
+
+- **A JOIN condition made of column pairs is quoted per dialect: `Expression::joinOn(array $pairs): string`.**
+  `$pairs` is a list of `[left, right]` simple identifiers (`ident` or `alias.ident`); the result is
+  `<left> = <right>` per pair, joined with ` AND `, each side marked like `Expression::column()`. An
+  empty list, a malformed pair or a side that is not a simple identifier throws
+  `InvalidArgumentException`. Reserved words (`group`, `user`) and camelCase aliases now work in a join
+  condition on MySQL, MariaDB, PostgreSQL and SQLite.
+- `JoinBuilder::__invoke()` takes a new optional last parameter `?callable $quoteMarkedIdentifiers = null`;
+  `SqlBuilder` (SELECT) and the UPDATE and DELETE builders pass their marker replacement, so identifier
+  markers in a JOIN ON condition are replaced by the quoted identifier. Without the callback, and for
+  every condition without a marker, the text stays byte-identical: a JOIN condition given as text is
+  still raw. No change to `contracts`, none to the signature of `innerJoin`/`leftJoin`/`rightJoin`/`fullJoin`.
+
 ## [1.3.2] - Unreleased
 
 ### Added

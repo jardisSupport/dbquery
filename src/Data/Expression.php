@@ -118,6 +118,53 @@ class Expression implements ExpressionInterface
     }
 
     /**
+     * Build a JOIN ON condition from column pairs (static factory method)
+     *
+     * Each pair `[left, right]` becomes `<left> = <right>`, pairs are joined with
+     * ` AND `. Every side is a column reference as in {@see self::column()}, quoted
+     * dialect-specifically at build time (MySQL/MariaDB/SQLite: backtick, PostgreSQL:
+     * double quote) - so reserved words (`group`, `user`) and camelCase aliases work
+     * on every dialect. Returns a `string` because the join methods take
+     * `string $constraint`; the JOIN builder replaces the markers in the ON condition.
+     *
+     * ```php
+     * $on = Expression::joinOn([['group.tenantId', 'user.tenantId'], ['group.id', 'user.groupId']]);
+     * $query->innerJoin('users', $on, 'user');
+     * ```
+     *
+     * @param array<int, mixed> $pairs List of `[left, right]` simple identifiers (`ident` or `alias.ident`)
+     * @return string The ON condition with identifier markers
+     * @throws InvalidArgumentException If the list is empty, a pair is not a list of two strings,
+     *                                  or a side is not a simple identifier
+     */
+    public static function joinOn(array $pairs): string
+    {
+        if ($pairs === []) {
+            throw new InvalidArgumentException('Expression::joinOn() needs at least one column pair');
+        }
+
+        $conditions = [];
+        foreach ($pairs as $pair) {
+            if (
+                !is_array($pair)
+                || count($pair) !== 2
+                || !array_key_exists(0, $pair)
+                || !array_key_exists(1, $pair)
+                || !is_string($pair[0])
+                || !is_string($pair[1])
+            ) {
+                throw new InvalidArgumentException(
+                    'Expression::joinOn() expects each pair as [left, right] of two strings'
+                );
+            }
+
+            $conditions[] = self::column($pair[0])->toSql() . ' = ' . self::column($pair[1])->toSql();
+        }
+
+        return implode(' AND ', $conditions);
+    }
+
+    /**
      * Get the raw SQL expression string
      *
      * @return string The unescaped SQL expression
