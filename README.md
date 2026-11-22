@@ -86,8 +86,10 @@ Simple identifiers are quoted in these positions:
 - already quoted strings (`` `createdAt` ``, `"createdAt"`)
 - `Expression::raw(...)` — the explicit escape hatch: even a simple identifier
   inside `Expression::raw()` is never quoted
-- JOIN ON constraints, window specifications (`partitionBy()`, `windowOrderBy()`)
-  and CTE inner SQL other than what the inner builder itself quotes
+- JOIN ON constraints written as text, window specifications (`partitionBy()`,
+  `windowOrderBy()`) and CTE inner SQL other than what the inner builder itself quotes.
+  A JOIN condition made of column pairs is the quoted way: `Expression::joinOn()`
+  (see "Typed Expressions" below)
 
 **Boundary** — quoting makes the written identifier case-significant on PostgreSQL.
 The name you pass must match the DDL exactly when the DDL was quoted, or be
@@ -241,3 +243,31 @@ composer require --dev jardis/dev-skills
 
 More details: <https://docs.jardis.io/en/skills>
 <!-- END jardis/dev-skills README block -->
+
+### JOIN condition from column pairs (`Expression::joinOn`)
+
+A JOIN ON condition passed as text stays raw and is never quoted. For a condition made of
+column pairs, `Expression::joinOn(array $pairs): string` returns the condition with both sides
+of every pair as column references, quoted per dialect when the statement is built (SELECT,
+UPDATE, DELETE with JOIN). The pairs are a list of `[left, right]`, each side a simple identifier
+(`ident` or `alias.ident`); the pairs are joined with `AND`. An empty list, a pair that is not two
+strings, or a side that is not a simple identifier throws `InvalidArgumentException`. The result is a
+`string`, so the signature of the join methods is unchanged.
+
+```php
+use JardisSupport\DbQuery\Data\Expression;
+
+$query = (new DbQuery())
+    ->select('group.name, user.login')
+    ->from('groups', 'group')
+    ->innerJoin(
+        'users',
+        Expression::joinOn([['group.tenantId', 'user.tenantId'], ['group.id', 'user.groupId']]),
+        'user'
+    );
+// PostgreSQL: ... FROM "groups" "group" INNER JOIN "users" "user"
+//             ON "group"."tenantId" = "user"."tenantId" AND "group"."id" = "user"."groupId"
+```
+
+Identifier markers inside a JOIN condition are replaced by the quoted identifier; text without
+markers is passed through byte-identical.

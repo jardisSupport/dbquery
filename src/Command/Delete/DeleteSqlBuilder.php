@@ -130,7 +130,8 @@ abstract class DeleteSqlBuilder
             $prepared,
             fn(string $id) => $this->quoteIdentifier($id),
             fn(string $type) => $this->shouldSkipJoinType($type),
-            $this->bindings
+            $this->bindings,
+            fn(string $cond) => $this->quoteMarkedIdentifiers($cond)
         );
     }
 

@@ -14,6 +14,10 @@ use JardisSupport\Contract\DbQuery\DbQueryBuilderInterface;
  *
  * Builds all types of JOINs (INNER, LEFT, RIGHT, FULL OUTER, CROSS).
  * Can be reused across multiple queries without side effects.
+ *
+ * The ON condition stays raw text. Only identifier markers inside it (see
+ * IdentifierMarkerReplacer, `Expression::joinOn()`) are replaced with dialect-quoted
+ * identifiers when a replacement callback is passed; text without markers is unchanged.
  */
 class JoinBuilder
 {
@@ -26,6 +30,8 @@ class JoinBuilder
      * @param callable $quoteIdentifier Callback to quote identifiers: fn(string): string
      * @param callable $shouldSkipJoinType Callback to check if join type is supported: fn(string): bool
      * @param array<int|string, mixed> &$bindings Reference to bindings array (modified in place)
+     * @param callable|null $quoteMarkedIdentifiers Callback replacing identifier markers in the ON condition
+     *        with dialect-quoted identifiers: fn(string): string. Null leaves the condition untouched.
      * @return string The JOIN clauses
      */
     public function __invoke(
@@ -34,7 +40,8 @@ class JoinBuilder
         bool $prepared,
         callable $quoteIdentifier,
         callable $shouldSkipJoinType,
-        array &$bindings
+        array &$bindings,
+        ?callable $quoteMarkedIdentifiers = null
     ): string {
         if (empty($state->getJoins())) {
             return '';
@@ -69,6 +76,9 @@ class JoinBuilder
             }
 
             $aliasStr = $alias ? ' ' . $quoteIdentifier($alias) : '';
+            if ($constraint && $quoteMarkedIdentifiers !== null) {
+                $constraint = $quoteMarkedIdentifiers($constraint);
+            }
             $constraintStr = $constraint ? ' ON ' . $constraint : '';
 
             $result[] = $joinType . ' ' . $containerStr . $aliasStr . $constraintStr;
