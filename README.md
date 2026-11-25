@@ -126,6 +126,34 @@ $query = (new DbQuery())
 // ... WHERE 1 = (SELECT 1 FROM `orders` `o` WHERE `o`.`user_id` = `u`.`id` LIMIT 1)
 ```
 
+### JOIN condition from column pairs (`Expression::joinOn`)
+
+A JOIN ON condition passed as text stays raw and is never quoted. For a condition made of
+column pairs, `Expression::joinOn(array $pairs): string` returns the condition with both sides
+of every pair as column references, quoted per dialect when the statement is built (SELECT,
+UPDATE, DELETE with JOIN). The pairs are a list of `[left, right]`, each side a simple identifier
+(`ident` or `alias.ident`); the pairs are joined with `AND`. An empty list, a pair that is not two
+strings, or a side that is not a simple identifier throws `InvalidArgumentException`. The result is a
+`string`, so the signature of the join methods is unchanged.
+
+```php
+use JardisSupport\DbQuery\Data\Expression;
+
+$query = (new DbQuery())
+    ->select('group.name, user.login')
+    ->from('groups', 'group')
+    ->innerJoin(
+        'users',
+        Expression::joinOn([['group.tenantId', 'user.tenantId'], ['group.id', 'user.groupId']]),
+        'user'
+    );
+// PostgreSQL: ... FROM "groups" "group" INNER JOIN "users" "user"
+//             ON "group"."tenantId" = "user"."tenantId" AND "group"."id" = "user"."groupId"
+```
+
+Identifier markers inside a JOIN condition are replaced by the quoted identifier; text without
+markers is passed through byte-identical.
+
 ## Advanced Usage
 
 ```php
@@ -179,6 +207,14 @@ $insert = (new DbInsert())
 
 $sql = $insert->sql('mysql', prepared: true);
 ```
+
+### Deep recursive chains
+
+`withRecursive()` runs into server limits on deep chains: MySQL aborts a recursive query after 1001
+iterations (`cte_max_recursion_depth` 1000, error 3636); MariaDB (`max_recursive_iterations` 1000)
+stops silently at 1001 rows without an error; PostgreSQL and SQLite have no such limit. A depth limit
+up to 999 is safe on all four. Use `UNION` (not `UNION ALL`) plus a depth limit to end on a cycle in
+the data, and bind the depth limit as an integer: on SQLite a limit bound as text never stops the chain.
 
 ### Upsert in every dialect
 
@@ -243,31 +279,3 @@ composer require --dev jardis/dev-skills
 
 More details: <https://docs.jardis.io/en/skills>
 <!-- END jardis/dev-skills README block -->
-
-### JOIN condition from column pairs (`Expression::joinOn`)
-
-A JOIN ON condition passed as text stays raw and is never quoted. For a condition made of
-column pairs, `Expression::joinOn(array $pairs): string` returns the condition with both sides
-of every pair as column references, quoted per dialect when the statement is built (SELECT,
-UPDATE, DELETE with JOIN). The pairs are a list of `[left, right]`, each side a simple identifier
-(`ident` or `alias.ident`); the pairs are joined with `AND`. An empty list, a pair that is not two
-strings, or a side that is not a simple identifier throws `InvalidArgumentException`. The result is a
-`string`, so the signature of the join methods is unchanged.
-
-```php
-use JardisSupport\DbQuery\Data\Expression;
-
-$query = (new DbQuery())
-    ->select('group.name, user.login')
-    ->from('groups', 'group')
-    ->innerJoin(
-        'users',
-        Expression::joinOn([['group.tenantId', 'user.tenantId'], ['group.id', 'user.groupId']]),
-        'user'
-    );
-// PostgreSQL: ... FROM "groups" "group" INNER JOIN "users" "user"
-//             ON "group"."tenantId" = "user"."tenantId" AND "group"."id" = "user"."groupId"
-```
-
-Identifier markers inside a JOIN condition are replaced by the quoted identifier; text without
-markers is passed through byte-identical.
