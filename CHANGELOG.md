@@ -4,7 +4,15 @@ All notable changes to `jardissupport/dbquery` are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 versioning follows [SemVer](https://semver.org/).
 
-## [1.4.0] - Unreleased
+## [1.4.1] - 2026-11-25
+
+### Changed
+
+- Documentation only, no change to `src/`: the README section on `Expression::joinOn()` moves from behind
+  the generated block into "Typed Expressions", the README gains a note on the server limits for deep
+  recursive chains, and the skill lists all `Expression` factories and the same limits.
+
+## [1.4.0] - 2026-11-22
 
 ### Added
 
@@ -20,7 +28,7 @@ versioning follows [SemVer](https://semver.org/).
   every condition without a marker, the text stays byte-identical: a JOIN condition given as text is
   still raw. No change to `contracts`, none to the signature of `innerJoin`/`leftJoin`/`rightJoin`/`fullJoin`.
 
-## [1.3.2] - Unreleased
+## [1.3.2] - 2026-11-21
 
 ### Added
 

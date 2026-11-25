@@ -20,7 +20,7 @@ next: []
 | `DbDelete` | DELETE + JOIN |
 | `DbPreparedQuery` | Result: `sql()`, `bindings()`, `type()` |
 | `Dialect` | Enum: `MySQL`, `MariaDB`, `PostgreSQL`, `SQLite` |
-| `Expression` | Raw SQL (not escaped) — `Expression::raw(string)` |
+| `Expression` | `Expression::raw(string)` raw SQL (not escaped); typed factories `integer(int)`, `column(string)`; `joinOn(array): string` for JOIN ON column pairs |
 
 ## SQL GENERATION
 ```php
@@ -114,6 +114,10 @@ $cte = (new DbQuery())->select('dept, AVG(salary) as avg')->from('emp')->groupBy
     ->innerJoin('dept_avg d', 'e.dept = d.dept');
 ->withRecursive('tree', $recursiveCte);
 ```
+Deep recursive chains: MySQL aborts after 1001 iterations (`cte_max_recursion_depth` 1000, error 3636); MariaDB
+(`max_recursive_iterations` 1000) stops silently at 1001 rows; PostgreSQL/SQLite have no such limit. A depth limit
+up to 999 is safe on all four. `UNION` (not `UNION ALL`) plus a depth limit ends on a cycle; bind the limit as an
+integer (on SQLite a limit bound as text never stops the chain).
 
 ## WINDOW FUNCTIONS
 ```php
